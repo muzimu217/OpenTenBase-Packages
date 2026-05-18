@@ -9,17 +9,10 @@ on:
 jobs:
   build:
     runs-on: ubuntu-${{ matrix.ubuntu }}
-    continue-on-error: ${{ matrix.optional || false }}
     strategy:
       fail-fast: false
       matrix:
         include:
-          - ubuntu: "20.04"
-            codename: focal
-            libpqxx: libpqxx-6.4
-            cli11_from_source: true
-            debhelper_compat: 12
-            optional: true
           - ubuntu: "22.04"
             codename: jammy
             libpqxx: libpqxx-7.6
@@ -63,12 +56,6 @@ jobs:
           if [ -f debian/patches/02-nolic-sharding.patch ]; then
             patch -p1 < debian/patches/02-nolic-sharding.patch || true
           fi
-
-      - name: Install CLI11 from source (focal only)
-        if: matrix.cli11_from_source
-        run: |
-          git clone --depth=1 https://github.com/CLIUtils/CLI11.git /tmp/cli11
-          sudo cp -r /tmp/cli11/include/CLI /usr/include/
 
       - name: Install build dependencies
         run: |
