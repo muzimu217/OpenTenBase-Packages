@@ -1,0 +1,13 @@
+--- a/src/backend/license/license.c
++++ b/src/backend/license/license.c
+@@ -120,10 +120,12 @@ void LicenseShmemInit(void)
+ 	license->is_loaded = false;
+ 	SpinLockInit(&license->lock);	
+
++#ifndef NOLIC
+ 	if(IS_PGXC_COORDINATOR)
+ 	{
+ 		load_license();
+ 	}
++#endif
+ }
