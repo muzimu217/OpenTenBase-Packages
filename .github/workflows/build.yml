@@ -65,10 +65,25 @@ jobs:
             libxml2-dev libldap2-dev libossp-uuid-dev uuid-dev \
             libcurl4-openssl-dev liblz4-dev libzstd-dev \
             libpqxx-dev quilt libtool pkg-config
-          # Install debhelper at the right compat level
           sudo apt-get install -y -qq debhelper
-          # libcli11-dev may not exist on focal
           sudo apt-get install -y -qq libcli11-dev 2>/dev/null || true
+
+      - name: Fix library paths
+        run: |
+          # OpenTenBase configure hardcodes /usr/local/lib/ for zstd/lz4
+          sudo mkdir -p /usr/local/lib
+          # zstd
+          ZSTD_LIB=$(find /usr/lib -name 'libzstd.so' -o -name 'libzstd.a' 2>/dev/null | head -1)
+          if [ -n "$ZSTD_LIB" ]; then
+            sudo ln -sf "$ZSTD_LIB" /usr/local/lib/libzstd.so
+            sudo ln -sf "$ZSTD_LIB" /usr/local/lib/libzstd.a 2>/dev/null || true
+          fi
+          # lz4
+          LZ4_LIB=$(find /usr/lib -name 'liblz4.so' -o -name 'liblz4.a' 2>/dev/null | head -1)
+          if [ -n "$LZ4_LIB" ]; then
+            sudo ln -sf "$LZ4_LIB" /usr/local/lib/liblz4.so
+            sudo ln -sf "$LZ4_LIB" /usr/local/lib/liblz4.a 2>/dev/null || true
+          fi
 
       - name: Patch control for ${{ matrix.codename }}
         working-directory: source
