@@ -17,14 +17,17 @@ jobs:
             codename: focal
             libpqxx: libpqxx-6.4
             cli11_from_source: true
+            debhelper_compat: 12
           - ubuntu: "22.04"
             codename: jammy
             libpqxx: libpqxx-7.6
             cli11_from_source: false
+            debhelper_compat: 13
           - ubuntu: "24.04"
             codename: noble
             libpqxx: libpqxx-7.8t64
             cli11_from_source: false
+            debhelper_compat: 13
 
     steps:
       - name: Clone OpenTenBase source
@@ -52,24 +55,26 @@ jobs:
         run: |
           git clone --depth=1 https://github.com/CLIUtils/CLI11.git /tmp/cli11
           sudo cp -r /tmp/cli11/include/CLI /usr/include/
-          echo "CLI11 headers installed to /usr/include/CLI"
 
       - name: Install build dependencies
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq \
-            debhelper-compat bison flex perl gcc g++ make \
+            bison flex perl gcc g++ make \
             libreadline-dev zlib1g-dev libssl-dev libpam0g-dev \
             libxml2-dev libldap2-dev libossp-uuid-dev uuid-dev \
             libcurl4-openssl-dev liblz4-dev libzstd-dev \
             libpqxx-dev quilt libtool pkg-config
-          # libcli11-dev may not exist on focal, skip if missing
+          # Install debhelper at the right compat level
+          sudo apt-get install -y -qq debhelper
+          # libcli11-dev may not exist on focal
           sudo apt-get install -y -qq libcli11-dev 2>/dev/null || true
 
       - name: Patch control for ${{ matrix.codename }}
         working-directory: source
         run: |
           sed -i "s/libpqxx-7.8t64 (>= 7.2)/${{ matrix.libpqxx }} (>= 7.2)/" debian/control
+          sed -i "s/debhelper-compat (= 13)/debhelper-compat (= ${{ matrix.debhelper_compat }})/" debian/control
           sed -i "s/5.0-1ubuntu1/5.0-1ubuntu1~${{ matrix.codename }}/" debian/changelog
 
       - name: Build packages
