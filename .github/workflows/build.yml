@@ -76,6 +76,7 @@ jobs:
             libreadline-dev zlib1g-dev libssl-dev libpam0g-dev \
             libxml2-dev libldap2-dev libossp-uuid-dev uuid-dev \
             libcurl4-openssl-dev liblz4-dev libzstd-dev \
+            libssh2-1-dev \
             libpqxx-dev quilt libtool pkg-config
           sudo apt-get install -y -qq debhelper
           sudo apt-get install -y -qq libcli11-dev 2>/dev/null || true
