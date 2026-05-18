@@ -1,12 +1,12 @@
 #!/bin/bash
 # OpenTenBase v5.0 installer — supports Ubuntu 20.04, 22.04, 24.04
 # Usage: bash install.sh [directory]
-#   directory: path to .deb files (default: current directory)
+#   directory: path to .deb files (default: download from GitHub)
 
 set -e
 
-DIR="${1:-.}"
-cd "$DIR"
+REPO="muzimu217/opentenbase-deb"
+TAG="v5.0-1ubuntu1"
 
 echo "OpenTenBase v5.0 Installer"
 echo "========================="
@@ -27,9 +27,9 @@ fi
 CODENAME="${UBUNTU_CODENAME:-$VERSION_CODENAME}"
 
 case "$CODENAME" in
-    noble)  TAG="ubuntu1" ;;       # 24.04
-    jammy)  TAG="1ubuntu1~jammy" ;; # 22.04
-    focal)  TAG="1ubuntu1~focal" ;; # 20.04
+    noble)  SUFFIX="" ;;            # 24.04: opentenbase_5.0-1ubuntu1_amd64.deb
+    jammy)  SUFFIX="~jammy" ;;      # 22.04: opentenbase_5.0-1ubuntu1~jammy_amd64.deb
+    focal)  SUFFIX="~focal" ;;      # 20.04: opentenbase_5.0-1ubuntu1~focal_amd64.deb
     *)
         echo "ERROR: unsupported Ubuntu version: $CODENAME" >&2
         echo "Supported: focal (20.04), jammy (22.04), noble (24.04)" >&2
@@ -39,23 +39,32 @@ esac
 
 echo "Detected: Ubuntu $VERSION_ID ($CODENAME)"
 
-# Package filenames
-PREFIX="opentenbase"
-VER="5.0"
+DIR="${1:-.}"
+VER="5.0-1ubuntu1${SUFFIX}"
+
 DEBS=(
-    "${PREFIX}_${VER}-${TAG}_all.deb"
-    "${PREFIX}-server_${VER}-${TAG}_amd64.deb"
-    "${PREFIX}-client_${VER}-${TAG}_amd64.deb"
-    "${PREFIX}-contrib_${VER}-${TAG}_amd64.deb"
+    "opentenbase_${VER}_all.deb"
+    "opentenbase-server_${VER}_amd64.deb"
+    "opentenbase-client_${VER}_amd64.deb"
+    "opentenbase-contrib_${VER}_amd64.deb"
 )
 
-# Check .deb files
+# Check if .deb files exist, if not download from GitHub
+cd "$DIR"
+if [ ! -f "${DEBS[0]}" ]; then
+    echo ">> Downloading packages from GitHub..."
+    for deb in "${DEBS[@]}"; do
+        echo "  $deb"
+        curl -sLO "https://github.com/${REPO}/releases/download/${TAG}/${deb}"
+    done
+    echo ""
+fi
+
+# Verify files exist
 missing=0
 for deb in "${DEBS[@]}"; do
     if [ ! -f "$deb" ]; then
-        echo "ERROR: $deb not found in $DIR" >&2
-        echo "Expected files for Ubuntu $CODENAME:" >&2
-        printf "  %s\n" "${DEBS[@]}" >&2
+        echo "ERROR: $deb not found" >&2
         missing=1
     fi
 done
