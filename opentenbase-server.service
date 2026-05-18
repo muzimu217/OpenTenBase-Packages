@@ -1,0 +1,19 @@
+[Unit]
+Description=OpenTenBase Distributed Database
+Documentation=https://www.opentenbase.org/
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+User=root
+EnvironmentFile=-/etc/default/opentenbase
+ExecStart=/usr/bin/opentenbase-ctl start
+ExecStop=/usr/bin/opentenbase-ctl stop
+ExecReload=/usr/bin/opentenbase-ctl reload
+TimeoutStartSec=300
+TimeoutStopSec=120
+
+[Install]
+WantedBy=multi-user.target

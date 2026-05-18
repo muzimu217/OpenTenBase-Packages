@@ -1,0 +1,2 @@
+libopentenbase-dev: package-name-doesnt-match-sonames
+libopentenbase-dev: missing-dependency-on-libc

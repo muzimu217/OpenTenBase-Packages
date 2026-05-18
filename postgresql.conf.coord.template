@@ -1,0 +1,6 @@
+# Minimal coordinator config additions
+listen_addresses = '*'
+port = 5432
+max_connections = 100
+shared_buffers = 256MB
+pgxc_node_name = 'coord1'
