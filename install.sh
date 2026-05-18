@@ -6,7 +6,7 @@
 set -e
 
 REPO="muzimu217/opentenbase-deb"
-TAG="v5.0-1ubuntu1"
+TAG="v5.0-multi7"
 
 echo "OpenTenBase v5.0 Installer"
 echo "========================="
