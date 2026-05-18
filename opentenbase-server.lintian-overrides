@@ -1,0 +1,16 @@
+# PostgreSQL upstream binaries lack manpages by convention
+opentenbase-server: no-manual-page
+opentenbase-server: binary-without-manpage
+# RPATH is intentional - private libraries in /usr/lib/opentenbase/lib
+opentenbase-server: binary-or-shlib-defines-rpath
+# Private libpq.so.5 is a fork; shipped under private prefix only
+opentenbase-server: package-name-doesnt-match-sonames
+opentenbase-server: embedded-library
+opentenbase-server: shlib-without-versioned-soname
+opentenbase-server: non-dev-pkg-with-shlib-symlink
+opentenbase-server: sharedobject-in-library-directory-missing-soname
+# /var/run/opentenbase is intentional runtime dir, created by tmpfiles.d / postinst
+opentenbase-server: dir-or-file-in-var-run
+opentenbase-server: package-contains-hardlink
+opentenbase-server: package-has-unnecessary-activation-of-ldconfig-trigger
+opentenbase-server: depends-on-obsolete-package

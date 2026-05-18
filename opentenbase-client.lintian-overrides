@@ -1,0 +1,3 @@
+opentenbase-client: no-manual-page
+opentenbase-client: binary-without-manpage
+opentenbase-client: binary-or-shlib-defines-rpath

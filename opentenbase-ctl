@@ -1,0 +1,279 @@
+#!/bin/bash
+# opentenbase-ctl - management script for OpenTenBase
+# Usage: opentenbase-ctl {init|start|stop|restart|status|reload|psql [node]|logs [node]}
+
+set -e
+
+CONFIG="${OTB_CONFIG:-/etc/opentenbase/opentenbase.conf}"
+[ -r "$CONFIG" ] || { echo "ERROR: cannot read $CONFIG" >&2; exit 1; }
+# shellcheck disable=SC1090
+. "$CONFIG"
+
+OTB_BIN="${OTB_HOME}/bin"
+TPL_DIR="/etc/opentenbase"
+
+run_as_otb() {
+    if [ "$(id -un)" = "$OTB_USER" ]; then
+        PATH="$OTB_BIN:$PATH" LD_LIBRARY_PATH="$OTB_HOME/lib:${LD_LIBRARY_PATH:-}" "$@"
+    else
+        runuser -u "$OTB_USER" -- env PATH="$OTB_BIN:/usr/bin:/bin" LD_LIBRARY_PATH="$OTB_HOME/lib" "$@"
+    fi
+}
+
+ensure_dirs() {
+    install -d -o "$OTB_USER" -g "$OTB_GROUP" -m 0750 /var/log/opentenbase
+    install -d -o "$OTB_USER" -g "$OTB_GROUP" -m 0700 /var/lib/opentenbase
+    install -d -o "$OTB_USER" -g "$OTB_GROUP" -m 0755 /var/run/opentenbase
+}
+
+cmd_init() {
+    ensure_dirs
+    # GTM
+    if [ ! -f "$GTM_PGDATA/gtm.conf" ]; then
+        install -d -o "$OTB_USER" -g "$OTB_GROUP" -m 0700 "$GTM_PGDATA"
+        echo ">> initgtm $GTM_PGDATA"
+        run_as_otb "$OTB_BIN/initgtm" -Z gtm -D "$GTM_PGDATA"
+        # Override port
+        sed -i "s/^port =.*/port = $GTM_PORT/" "$GTM_PGDATA/gtm.conf"
+        sed -i "s/^nodename =.*/nodename = 'gtm_master'/" "$GTM_PGDATA/gtm.conf"
+    else
+        echo ">> gtm already initialised, skipping"
+    fi
+
+    # Coordinator
+    if [ ! -f "$COORD_PGDATA/PG_VERSION" ]; then
+        install -d -o "$OTB_USER" -g "$OTB_GROUP" -m 0700 "$COORD_PGDATA"
+        echo ">> initdb coordinator at $COORD_PGDATA"
+        run_as_otb "$OTB_BIN/initdb" -D "$COORD_PGDATA" --nodename="$COORD_NODENAME" --nodetype=coordinator \
+            --master_gtm_nodename=gtm_master --master_gtm_ip=127.0.0.1 --master_gtm_port="$GTM_PORT" \
+            --locale=C.UTF-8 -E UTF8 -U "$OTB_USER"
+        {
+            echo ""
+            echo "# --- opentenbase coordinator overrides ---"
+            echo "listen_addresses = '*'"
+            echo "port = $COORD_PORT"
+            echo "forward_port = ${COORD_FORWARD_PORT:-6669}"
+            echo "pooler_port = ${COORD_POOLER_PORT:-6667}"
+            echo "pgxc_node_name = '$COORD_NODENAME'"
+            echo "log_directory = '/var/log/opentenbase'"
+            echo "log_filename = 'coord.log'"
+            echo "logging_collector = on"
+        } >> "$COORD_PGDATA/postgresql.conf"
+        cp "$TPL_DIR/pg_hba.conf.template" "$COORD_PGDATA/pg_hba.conf"
+        chown "$OTB_USER:$OTB_GROUP" "$COORD_PGDATA/pg_hba.conf"
+    else
+        echo ">> coord already initialised, skipping"
+    fi
+
+    # Datanode 1
+    if [ ! -f "$DN1_PGDATA/PG_VERSION" ]; then
+        install -d -o "$OTB_USER" -g "$OTB_GROUP" -m 0700 "$DN1_PGDATA"
+        echo ">> initdb datanode at $DN1_PGDATA"
+        run_as_otb "$OTB_BIN/initdb" -D "$DN1_PGDATA" --nodename="$DN1_NODENAME" --nodetype=datanode \
+            --master_gtm_nodename=gtm_master --master_gtm_ip=127.0.0.1 --master_gtm_port="$GTM_PORT" \
+            --locale=C.UTF-8 -E UTF8 -U "$OTB_USER"
+        {
+            echo ""
+            echo "# --- opentenbase datanode overrides ---"
+            echo "listen_addresses = '*'"
+            echo "port = $DN1_PORT"
+            echo "forward_port = ${DN1_FORWARD_PORT:-6670}"
+            echo "pooler_port = ${DN1_POOLER_PORT:-6668}"
+            echo "pgxc_node_name = '$DN1_NODENAME'"
+            echo "log_directory = '/var/log/opentenbase'"
+            echo "log_filename = 'dn1.log'"
+            echo "logging_collector = on"
+        } >> "$DN1_PGDATA/postgresql.conf"
+        cp "$TPL_DIR/pg_hba.conf.template" "$DN1_PGDATA/pg_hba.conf"
+        chown "$OTB_USER:$OTB_GROUP" "$DN1_PGDATA/pg_hba.conf"
+    else
+        echo ">> dn1 already initialised, skipping"
+    fi
+
+    echo ">> init complete. Run: opentenbase-ctl start"
+}
+
+wait_for_port() {
+    local host=127.0.0.1 port=$1 max=60
+    for i in $(seq 1 $max); do
+        if (echo > "/dev/tcp/$host/$port") 2>/dev/null; then
+            return 0
+        fi
+        sleep 1
+    done
+    return 1
+}
+
+start_gtm() {
+    if pgrep -u "$OTB_USER" -f "gtm -D $GTM_PGDATA" >/dev/null 2>&1; then
+        echo "  gtm already running"
+        return 0
+    fi
+    echo "  starting gtm"
+    run_as_otb "$OTB_BIN/gtm_ctl" -Z gtm -D "$GTM_PGDATA" -l "$GTM_LOG" start
+    wait_for_port "$GTM_PORT" || { echo "gtm port $GTM_PORT not listening"; return 1; }
+}
+
+start_dn1() {
+    if [ -f "$DN1_PGDATA/postmaster.pid" ] && \
+       kill -0 "$(head -1 "$DN1_PGDATA/postmaster.pid")" 2>/dev/null; then
+        echo "  dn1 already running"
+        return 0
+    fi
+    echo "  starting dn1"
+    run_as_otb "$OTB_BIN/pg_ctl" -Z datanode -D "$DN1_PGDATA" -l "$DN1_LOG" \
+        -o "-i" start
+    wait_for_port "$DN1_PORT" || { echo "dn1 port $DN1_PORT not listening"; return 1; }
+}
+
+start_coord() {
+    if [ -f "$COORD_PGDATA/postmaster.pid" ] && \
+       kill -0 "$(head -1 "$COORD_PGDATA/postmaster.pid")" 2>/dev/null; then
+        echo "  coord already running"
+        return 0
+    fi
+    echo "  starting coord"
+    run_as_otb "$OTB_BIN/pg_ctl" -Z coordinator -D "$COORD_PGDATA" -l "$COORD_LOG" \
+        -o "-i" start
+    wait_for_port "$COORD_PORT" || { echo "coord port $COORD_PORT not listening"; return 1; }
+}
+
+register_nodes() {
+    # Register all nodes via coordinator using CREATE NODE / CREATE GTM NODE
+    # v5.0 uses pgxc_node system table instead of gtm_host/gtm_port GUCs
+    local psql="$OTB_BIN/psql -h 127.0.0.1 -p $COORD_PORT -U $OTB_USER -d postgres -X -q -v ON_ERROR_STOP=0"
+    local dn1_psql="$OTB_BIN/psql -h 127.0.0.1 -p $DN1_PORT -U $OTB_USER -d postgres -X -q -v ON_ERROR_STOP=0"
+
+    echo "  registering GTM node in pgxc_node ..."
+    run_as_otb bash -c "$psql -c \"CREATE GTM NODE gtm_master WITH (HOST='127.0.0.1', PORT=$GTM_PORT, PRIMARY);\"" 2>/dev/null || true
+    run_as_otb bash -c "$psql -c \"ALTER GTM NODE gtm_master WITH (HOST='127.0.0.1', PORT=$GTM_PORT, PRIMARY);\"" 2>/dev/null || true
+
+    local coord_fwd=${COORD_FORWARD_PORT:-6669}
+    local dn1_fwd=${DN1_FORWARD_PORT:-6670}
+
+    echo "  registering coordinator node ..."
+    run_as_otb bash -c "$psql -c \"CREATE NODE $COORD_NODENAME WITH (TYPE='coordinator', HOST='127.0.0.1', PORT=$COORD_PORT, FORWARD=$coord_fwd);\"" 2>/dev/null || true
+    run_as_otb bash -c "$psql -c \"ALTER NODE $COORD_NODENAME WITH (TYPE='coordinator', HOST='127.0.0.1', PORT=$COORD_PORT, FORWARD=$coord_fwd);\"" 2>/dev/null || true
+
+    echo "  registering datanode node ..."
+    run_as_otb bash -c "$psql -c \"CREATE NODE $DN1_NODENAME WITH (TYPE='datanode', HOST='127.0.0.1', PORT=$DN1_PORT, FORWARD=$dn1_fwd, PRIMARY, PREFERRED);\"" 2>/dev/null || true
+    run_as_otb bash -c "$psql -c \"ALTER NODE $DN1_NODENAME WITH (TYPE='datanode', HOST='127.0.0.1', PORT=$DN1_PORT, FORWARD=$dn1_fwd, PRIMARY, PREFERRED);\"" 2>/dev/null || true
+
+    echo "  reloading connection pool ..."
+    run_as_otb bash -c "$psql -c 'SELECT pgxc_pool_reload();'" >/dev/null 2>&1 || true
+
+    # Propagate node registrations to datanode (if datanode is running)
+    if [ -f "$DN1_PGDATA/postmaster.pid" ] && \
+       kill -0 "$(head -1 "$DN1_PGDATA/postmaster.pid")" 2>/dev/null; then
+        echo "  propagating nodes to datanode ..."
+        run_as_otb bash -c "$psql -c \"EXECUTE DIRECT ON ($DN1_NODENAME) 'CREATE GTM NODE gtm_master WITH (HOST='\\\'\\\'127.0.0.1\\\'\\\', PORT=$GTM_PORT, PRIMARY)';\"" 2>/dev/null || true
+        run_as_otb bash -c "$psql -c \"EXECUTE DIRECT ON ($DN1_NODENAME) 'ALTER GTM NODE gtm_master WITH (HOST='\\\'\\\'127.0.0.1\\\'\\\', PORT=$GTM_PORT, PRIMARY)';\"" 2>/dev/null || true
+        run_as_otb bash -c "$psql -c \"EXECUTE DIRECT ON ($DN1_NODENAME) 'CREATE NODE $COORD_NODENAME WITH (TYPE='\\\'\\\'coordinator\\\'\\\'', HOST='\\\'\\\'127.0.0.1\\\'\\\'', PORT=$COORD_PORT, FORWARD=$coord_fwd)';\"" 2>/dev/null || true
+        run_as_otb bash -c "$psql -c \"EXECUTE DIRECT ON ($DN1_NODENAME) 'SELECT pgxc_pool_reload()';\"" 2>/dev/null || true
+    fi
+}
+
+stop_gtm() {
+    echo "  stopping gtm"
+    run_as_otb "$OTB_BIN/gtm_ctl" -Z gtm -D "$GTM_PGDATA" stop -m fast || true
+}
+stop_dn1() {
+    echo "  stopping dn1"
+    run_as_otb "$OTB_BIN/pg_ctl" -D "$DN1_PGDATA" stop -m fast || true
+}
+stop_coord() {
+    echo "  stopping coord"
+    run_as_otb "$OTB_BIN/pg_ctl" -D "$COORD_PGDATA" stop -m fast || true
+}
+
+cmd_start() {
+    ensure_dirs
+    # Start order: gtm -> coord -> (register) -> dn1
+    for n in $START_ORDER; do
+        case $n in
+            gtm) start_gtm ;;
+            coord) start_coord ;;
+            dn1)
+                # Register nodes before starting datanode so it can find GTM in pgxc_node
+                register_nodes
+                start_dn1
+                ;;
+        esac
+    done
+    # Final registration pass (ensures datanode also gets GTM propagated)
+    register_nodes
+    echo ">> start complete"
+}
+
+cmd_stop() {
+    for n in $STOP_ORDER; do
+        case $n in
+            gtm) stop_gtm ;;
+            dn1) stop_dn1 ;;
+            coord) stop_coord ;;
+        esac
+    done
+    echo ">> stop complete"
+}
+
+cmd_status() {
+    local ok=1
+    for n in $ENABLED_NODES; do
+        case $n in
+            gtm)
+                if pgrep -u "$OTB_USER" -f "gtm -D $GTM_PGDATA" >/dev/null 2>&1; then
+                    echo "gtm:   RUNNING"
+                else echo "gtm:   STOPPED"; ok=0; fi ;;
+            dn1)
+                if [ -f "$DN1_PGDATA/postmaster.pid" ] && \
+                   kill -0 "$(head -1 "$DN1_PGDATA/postmaster.pid")" 2>/dev/null; then
+                    echo "dn1:   RUNNING"
+                else echo "dn1:   STOPPED"; ok=0; fi ;;
+            coord)
+                if [ -f "$COORD_PGDATA/postmaster.pid" ] && \
+                   kill -0 "$(head -1 "$COORD_PGDATA/postmaster.pid")" 2>/dev/null; then
+                    echo "coord: RUNNING"
+                else echo "coord: STOPPED"; ok=0; fi ;;
+        esac
+    done
+    [ $ok -eq 1 ] && return 0 || return 3
+}
+
+cmd_restart() { cmd_stop; sleep 2; cmd_start; }
+cmd_reload()  {
+    run_as_otb "$OTB_BIN/pg_ctl" -D "$COORD_PGDATA" reload || true
+    run_as_otb "$OTB_BIN/pg_ctl" -D "$DN1_PGDATA" reload || true
+}
+cmd_psql() {
+    local node=${1:-coord}
+    case $node in
+        coord) exec run_as_otb "$OTB_BIN/psql" -h 127.0.0.1 -p "$COORD_PORT" -U "$OTB_USER" -d postgres ;;
+        dn1)   exec run_as_otb "$OTB_BIN/psql" -h 127.0.0.1 -p "$DN1_PORT" -U "$OTB_USER" -d postgres ;;
+        *) echo "unknown node: $node"; exit 2 ;;
+    esac
+}
+cmd_logs() {
+    local node=${1:-coord}
+    case $node in
+        gtm) exec tail -f "$GTM_LOG" ;;
+        dn1) exec tail -f "$DN1_LOG" ;;
+        coord) exec tail -f "$COORD_LOG" ;;
+        *) echo "unknown node: $node"; exit 2 ;;
+    esac
+}
+
+case "${1:-}" in
+    init) cmd_init ;;
+    start) cmd_start ;;
+    stop) cmd_stop ;;
+    restart) cmd_restart ;;
+    reload) cmd_reload ;;
+    status) cmd_status ;;
+    psql) shift; cmd_psql "$@" ;;
+    logs) shift; cmd_logs "$@" ;;
+    *)
+        cat >&2 <<USAGE
+Usage: opentenbase-ctl {init|start|stop|restart|reload|status|psql [node]|logs [node]}
+USAGE
+        exit 2 ;;
+esac

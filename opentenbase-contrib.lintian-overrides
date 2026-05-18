@@ -1,0 +1,6 @@
+# PG extension .so files are loadable modules, not linked against libc directly
+opentenbase-contrib: library-not-linked-against-libc
+opentenbase-contrib: shared-library-lacks-prerequisites
+opentenbase-contrib: no-manual-page
+opentenbase-contrib: binary-without-manpage
+opentenbase-contrib: binary-or-shlib-defines-rpath

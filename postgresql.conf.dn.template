@@ -1,0 +1,6 @@
+# Minimal datanode config additions
+listen_addresses = '*'
+port = 15432
+max_connections = 100
+shared_buffers = 256MB
+pgxc_node_name = 'dn001'

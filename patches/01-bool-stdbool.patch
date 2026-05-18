@@ -1,0 +1,32 @@
+Description: Defuse <stdbool.h> for PG10 char-bool to avoid gcc 13 type conflicts
+ PG10 typedef'd `bool` as `char`. Modern glibc/libc++ system headers
+ (immintrin.h, etc.) transitively include <stdbool.h>, which
+ `#define bool _Bool`. When that happens partway through a TU, header
+ decls and definitions disagree (one sees char, one sees _Bool), causing
+ "conflicting types" errors with gcc 13/14.
+ .
+ Pre-define _STDBOOL_H BEFORE the first system header so subsequent
+ #include <stdbool.h> becomes a no-op TU-wide.
+Author: OpenTenBase Packaging <packaging@opentenbase.org>
+Forwarded: not-needed
+Last-Update: 2026-05-17
+
+--- a/src/include/c.h
++++ b/src/include/c.h
+@@ -45,6 +45,16 @@
+ #ifndef C_H
+ #define C_H
+
++/*
++ * Pre-define gcc's <stdbool.h> include guard so it becomes a no-op for the
++ * remainder of the translation unit. PG10 uses `typedef char bool` (sizeof=1,
++ * baked into on-disk format); we must not let stdbool.h's
++ * `#define bool _Bool` race with our typedef mid-TU via transitive includes
++ * from system headers like immintrin.h.
++ */
++#define _STDBOOL_H 1
++#define __bool_true_false_are_defined 1
++
+ #if defined(__x86_64__)
+ #include "immintrin.h"
+ #endif

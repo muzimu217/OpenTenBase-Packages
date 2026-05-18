@@ -1,0 +1,6 @@
+# GTM configuration template
+nodename = 'gtm_master'
+listen_addresses = '*'
+port = 6666
+startup = ACT
+log_file = 'gtm.log'

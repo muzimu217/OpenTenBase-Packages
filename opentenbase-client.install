@@ -1,0 +1,16 @@
+usr/lib/opentenbase/bin/psql
+usr/lib/opentenbase/bin/pg_dump
+usr/lib/opentenbase/bin/pg_dumpall
+usr/lib/opentenbase/bin/pg_restore
+usr/lib/opentenbase/bin/pg_basebackup
+usr/lib/opentenbase/bin/pg_isready
+usr/lib/opentenbase/bin/pg_recvlogical
+usr/lib/opentenbase/bin/pg_receivewal
+usr/lib/opentenbase/bin/createdb
+usr/lib/opentenbase/bin/dropdb
+usr/lib/opentenbase/bin/createuser
+usr/lib/opentenbase/bin/dropuser
+usr/lib/opentenbase/bin/reindexdb
+usr/lib/opentenbase/bin/vacuumdb
+usr/lib/opentenbase/bin/clusterdb
+usr/lib/opentenbase/bin/ecpg

@@ -1,0 +1,30 @@
+#!/bin/sh
+set -e
+
+case "$1" in
+    configure)
+        # Create system user/group
+        if ! getent group opentenbase >/dev/null; then
+            addgroup --system --quiet opentenbase
+        fi
+        if ! getent passwd opentenbase >/dev/null; then
+            adduser --system --quiet --ingroup opentenbase \
+                --home /var/lib/opentenbase --shell /bin/bash \
+                --gecos "OpenTenBase administrator" opentenbase
+        fi
+        # Ownership of state dirs
+        for d in /var/lib/opentenbase /var/log/opentenbase /var/run/opentenbase; do
+            [ -d "$d" ] || mkdir -p "$d"
+            chown opentenbase:opentenbase "$d"
+        done
+        chmod 0700 /var/lib/opentenbase
+        chmod 0750 /var/log/opentenbase
+        chmod 0755 /var/run/opentenbase
+        ;;
+    abort-upgrade|abort-remove|abort-deconfigure)
+        ;;
+esac
+
+#DEBHELPER#
+
+exit 0

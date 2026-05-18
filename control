@@ -1,0 +1,116 @@
+Source: opentenbase
+Section: database
+Priority: optional
+Maintainer: OpenTenBase Packaging <packaging@opentenbase.org>
+Build-Depends:
+ debhelper-compat (= 13),
+ libssl-dev,
+ libreadline-dev,
+ zlib1g-dev,
+ libxml2-dev,
+ libldap-dev,
+ libpam0g-dev,
+ libkrb5-dev,
+ uuid-dev,
+ libsystemd-dev,
+ flex,
+ bison,
+ perl,
+ python3-dev,
+ tcl-dev,
+ gettext,
+ docbook-xsl,
+ xsltproc,
+ pkg-config,
+ libcli11-dev,
+ libpqxx-dev
+Standards-Version: 4.6.2
+Homepage: https://www.opentenbase.org/
+Vcs-Git: https://github.com/OpenTenBase/OpenTenBase.git
+Vcs-Browser: https://github.com/OpenTenBase/OpenTenBase
+Rules-Requires-Root: binary-targets
+
+Package: opentenbase
+Architecture: all
+Depends:
+ opentenbase-server (= ${binary:Version}),
+ opentenbase-client (= ${binary:Version}),
+ ${misc:Depends}
+Description: distributed SQL database (metapackage)
+ OpenTenBase is an enterprise-level distributed SQL database management
+ system based on PostgreSQL. It provides distributed transactions,
+ horizontal scalability via sharding, and multi-tenant capabilities.
+ .
+ This is a convenience metapackage that depends on opentenbase-server
+ and opentenbase-client for a typical single-node installation.
+
+Package: opentenbase-server
+Architecture: amd64
+Depends:
+ ${shlibs:Depends},
+ ${misc:Depends},
+ opentenbase-client (= ${binary:Version}),
+ adduser,
+ lsb-base
+Description: OpenTenBase server binaries (postgres, gtm, pg_ctl)
+ OpenTenBase is an enterprise-level distributed SQL database management
+ system based on PostgreSQL.
+ .
+ This package contains the server binaries (postgres, initdb, pg_ctl,
+ gtm, gtm_proxy, initgtm, ...), private shared libraries, the
+ opentenbase-ctl management script, and a systemd unit. It also
+ creates the opentenbase system user and data directories.
+
+Package: opentenbase-client
+Architecture: amd64
+Depends:
+ ${shlibs:Depends},
+ ${misc:Depends}
+Description: OpenTenBase client utilities (psql, pg_dump)
+ OpenTenBase is an enterprise-level distributed SQL database management
+ system based on PostgreSQL.
+ .
+ This package contains the client utilities (psql, pg_dump, pg_dumpall,
+ pg_restore, pg_basebackup, createdb, dropdb, createuser, dropuser).
+ Wrappers are exposed under /usr/bin/ with an opentenbase- prefix to
+ avoid conflicts with system PostgreSQL client packages.
+
+Package: opentenbase-contrib
+Architecture: amd64
+Depends:
+ ${shlibs:Depends},
+ ${misc:Depends},
+ opentenbase-server (= ${binary:Version})
+Description: OpenTenBase contributed extensions
+ OpenTenBase is an enterprise-level distributed SQL database management
+ system based on PostgreSQL.
+ .
+ This package contains contributed extensions (hstore, pg_stat_statements,
+ postgres_fdw, pgcrypto, citext, etc.) and OpenTenBase-specific modules.
+
+Package: libopentenbase-dev
+Section: libdevel
+Architecture: amd64
+Depends:
+ ${misc:Depends},
+ libssl-dev,
+ libreadline-dev,
+ zlib1g-dev
+Description: Development headers and static libraries for OpenTenBase
+ OpenTenBase is an enterprise-level distributed SQL database management
+ system based on PostgreSQL.
+ .
+ This package contains the C header files and static libraries needed
+ to build applications and extensions against OpenTenBase.
+
+Package: opentenbase-doc
+Section: doc
+Architecture: all
+Multi-Arch: foreign
+Depends: ${misc:Depends}
+Description: Documentation for OpenTenBase
+ OpenTenBase is an enterprise-level distributed SQL database management
+ system based on PostgreSQL.
+ .
+ This package contains README files, the project license, and
+ example configurations.
