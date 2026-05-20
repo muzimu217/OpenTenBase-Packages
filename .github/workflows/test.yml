@@ -1,0 +1,61 @@
+name: Test Packages
+
+on:
+  workflow_call:
+    inputs:
+      distro:
+        required: true
+        type: string
+      version:
+        required: true
+        type: string
+      codename:
+        required: true
+        type: string
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download packages
+        uses: actions/download-artifact@v4
+        with:
+          name: debs-${{ inputs.distro }}-${{ inputs.codename }}
+          path: packages/
+
+      - name: Create test container
+        run: |
+          cat > Dockerfile.test << 'EOF'
+          FROM ${{ inputs.distro }}:${{ inputs.version }}
+          ENV DEBIAN_FRONTEND=noninteractive
+
+          # Install runtime dependencies
+          RUN apt-get update && apt-get install -y \
+              libreadline8 libssl3 libxml2 libcurl4 \
+              libldap-2.5-0 libpam0g liblz4-1 libzstd1 \
+              libssh2-1 libossp-uuid16 sudo \
+              && rm -rf /var/lib/apt/lists/*
+
+          # Copy and install packages
+          COPY packages/*.deb /tmp/debs/
+          RUN dpkg -i /tmp/debs/*.deb || apt-get install -f -y
+
+          # Copy test script
+          COPY test/integration-test.sh /test/
+          RUN chmod +x /test/integration-test.sh
+
+          CMD ["/test/integration-test.sh"]
+          EOF
+
+      - name: Build test image
+        run: |
+          docker build \
+            --build-arg DISTRO=${{ inputs.distro }} \
+            --build-arg VERSION=${{ inputs.version }} \
+            -f Dockerfile.test \
+            -t opentenbase-test:${{ inputs.codename }} \
+            .
+
+      - name: Run integration tests
+        run: |
+          docker run --rm opentenbase-test:${{ inputs.codename }}
