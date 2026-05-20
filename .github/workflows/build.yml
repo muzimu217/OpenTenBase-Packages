@@ -1,9 +1,6 @@
 name: Build .deb packages
 
 on:
-  push:
-    tags:
-      - 'v*'
   workflow_dispatch:
 
 jobs:

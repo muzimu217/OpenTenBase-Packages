@@ -1,9 +1,6 @@
 name: Build Multi-Distro Packages
 
 on:
-  push:
-    tags:
-      - 'v*'
   workflow_dispatch:
     inputs:
       distro:
