@@ -239,3 +239,131 @@ Same as OpenTenBase (Apache 2.0).
 
 **Maintainer**: muzimu217  
 **Last Updated**: 2026-05-20
+
+## Building from Source with Docker
+
+### Prerequisites
+
+- Docker installed and running
+- Git
+
+### Quick Start
+
+```bash
+# Clone the repository
+git clone https://github.com/muzimu217/opentenbase-deb.git
+cd opentenbase-deb
+
+# Test build for Ubuntu 20.04
+./test-build.sh -d ubuntu -v 20.04
+
+# Test build for Debian 12
+./test-build.sh -d debian -v 12
+
+# Test all supported distributions
+./test-build.sh --all
+```
+
+### Supported Build Environments
+
+| Distribution | Version | Codename | Dockerfile |
+|--------------|---------|----------|------------|
+| Ubuntu | 20.04 | focal | docker-ubuntu-20.04.Dockerfile |
+| Ubuntu | 22.04 | jammy | ubuntu-22.04.Dockerfile |
+| Ubuntu | 24.04 | noble | ubuntu-24.04.Dockerfile |
+| Debian | 11 | bullseye | docker-debian-11.Dockerfile |
+| Debian | 12 | bookworm | docker-debian-12.Dockerfile |
+
+### Manual Build
+
+```bash
+# Build Docker image for Ubuntu 20.04
+docker build -f docker-ubuntu-20.04.Dockerfile -t opentenbase-builder:focal .
+
+# Clone OpenTenBase source
+git clone --depth=1 https://github.com/OpenTenBase/OpenTenBase.git source
+
+# Run build
+docker run \
+    --rm \
+    -v $(pwd)/source:/source \
+    -v $(pwd)/output:/output \
+    opentenbase-builder:focal
+
+# Check output
+ls -lh output/*.deb
+```
+
+### CI/CD Pipeline
+
+The project uses GitHub Actions for automated builds:
+
+- **build.yml**: Original workflow (Ubuntu 22.04/24.04)
+- **build-multi.yml**: Multi-distro workflow (Ubuntu 20.04/22.04/24.04 + Debian 11/12)
+- **build-multi-optimized.yml**: Optimized workflow with caching
+
+To trigger a build:
+
+```bash
+# Create a new version tag
+./release.sh v5.0-multi9
+
+# Or manually
+git tag -a v5.0-multi9 -m "Release v5.0-multi9"
+git push origin v5.0-multi9
+```
+
+## Version Release
+
+### Using Release Script
+
+```bash
+# Show help
+./release.sh --help
+
+# Dry run (test without executing)
+./release.sh --dry-run v5.0-multi9
+
+# Release with custom message
+./release.sh -m "Bug fixes and improvements" v5.0-multi9
+
+# Force release (skip confirmation)
+./release.sh --force v5.0-multi9
+```
+
+### Manual Release
+
+1. Update `install.sh` TAG version
+2. Commit changes
+3. Create Git tag
+4. Push tag to GitHub
+5. Wait for CI to build and create release
+
+```bash
+# Update install.sh
+sed -i 's/TAG=".*"/TAG="v5.0-multi9"/' install.sh
+
+# Commit
+git add install.sh
+git commit -m "chore: update install.sh TAG to v5.0-multi9"
+
+# Create tag
+git tag -a v5.0-multi9 -m "Release v5.0-multi9"
+
+# Push
+git push origin main
+git push origin v5.0-multi9
+```
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+## License
+
+Same as OpenTenBase (Apache 2.0).
+
+---
+
+**Maintainer**: muzimu217  
+**Last Updated**: 2026-05-20
