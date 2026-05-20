@@ -120,16 +120,16 @@ opentenbase-repo/
 
 #### Task List
 
-- [ ] **Create Docker build environments**
-  - [ ] Ubuntu 20.04 Dockerfile
-  - [ ] Ubuntu 22.04 Dockerfile
-  - [ ] Ubuntu 24.04 Dockerfile
-  - [ ] Debian 11 Dockerfile
-  - [ ] Debian 12 Dockerfile
+- [x] **Create Docker build environments**
+  - [x] Ubuntu 20.04 Dockerfile
+  - [x] Ubuntu 22.04 Dockerfile (existing)
+  - [x] Ubuntu 24.04 Dockerfile (existing)
+  - [x] Debian 11 Dockerfile
+  - [x] Debian 12 Dockerfile
 
-- [ ] **Update CI workflows**
-  - [ ] Modify `.github/workflows/build.yml`
-  - [ ] Add Docker build steps
+- [x] **Update CI workflows**
+  - [x] Create `.github/workflows/build-multi.yml`
+  - [x] Create `.github/workflows/build-multi-optimized.yml`
   - [ ] Test all version builds
 
 - [ ] **Standardize packaging specifications**
@@ -180,10 +180,10 @@ opentenbase-repo/
   - [ ] Support multi-version coexistence
   - [ ] Version switching mechanism
 
-- [ ] **Documentation completion**
-  - [ ] Installation guide (bilingual)
-  - [ ] Configuration guide
-  - [ ] Troubleshooting guide
+- [x] **Documentation completion**
+  - [x] Installation guide (bilingual)
+  - [x] Configuration guide
+  - [x] Troubleshooting guide
 
 #### Expected Results
 
@@ -559,6 +559,83 @@ main "$@"
 **Recommended choice: Self-built APT repository + Docker build**
 
 This is the **standard route for official packaging of open source projects**, and also the **most valuable long-term contribution** you can leave for OpenTenBase.
+
+---
+
+## Current Progress
+
+### Completed ✅
+
+- [x] **Create Docker build environments**
+  - [x] Ubuntu 20.04 Dockerfile
+  - [x] Ubuntu 22.04 Dockerfile (existing)
+  - [x] Ubuntu 24.04 Dockerfile (existing)
+  - [x] Debian 11 Dockerfile
+  - [x] Debian 12 Dockerfile
+
+- [x] **Update CI workflows**
+  - [x] Create `.github/workflows/build-multi.yml`
+  - [x] Create `.github/workflows/build-multi-optimized.yml`
+
+- [x] **Documentation completion**
+  - [x] Installation guide (bilingual)
+  - [x] Configuration guide
+  - [x] Troubleshooting guide
+
+- [x] **Toolchain**
+  - [x] `test-build.sh` - Local test script
+  - [x] `release.sh` - Version release script
+  - [x] `build-deb.sh` - Docker build script
+
+### In Progress 🔄
+
+- [ ] **Testing and verification**
+  - [ ] Ubuntu 20.04 installation test
+  - [ ] Ubuntu 22.04 installation test
+  - [ ] Ubuntu 24.04 installation test
+  - [ ] Debian 11 installation test
+  - [ ] Debian 12 installation test
+
+### Pending ⏳
+
+- [ ] **Standardize packaging specifications**
+- [ ] **Build APT repository**
+- [ ] **RPM package support**
+- [ ] **Automated CI/CD pipeline**
+
+---
+
+## Required Resources
+
+### Immediately Needed
+
+1. **Test servers** (optional)
+   - For testing installation in real environments
+   - Suggested: Ubuntu 20.04/22.04/24.04 + Debian 11/12, one each
+   - Can use cloud servers (e.g., AWS, Alibaba Cloud, Tencent Cloud)
+
+2. **GitHub Actions quota**
+   - Currently using GitHub free quota
+   - 2000 minutes free build time per month
+   - Consider upgrading to GitHub Pro if more is needed
+
+### Medium-term Needed
+
+3. **Domain name** (optional)
+   - For building APT repository
+   - Example: `apt.opentenbase.org`
+   - Can use GitHub Pages as temporary solution
+
+4. **GPG key**
+   - For signing packages
+   - Increase user trust
+
+### Long-term Needed
+
+5. **Cloud server**
+   - For hosting APT/RPM repository
+   - Suggested: At least 2 cores, 4GB RAM
+   - Bandwidth: At least 10Mbps
 
 ---
 
