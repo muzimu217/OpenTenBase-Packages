@@ -88,7 +88,12 @@ install_dependencies() {
 
     # Ensure -latomic is available for 128-bit atomics
     # On Debian, libatomic.so may not exist even with libatomic1 installed.
-    # Try multiple approaches to find/create the symlink.
+    log_info "Setting up libatomic for 128-bit atomics..."
+
+    # Install libatomic1 if not present
+    apt-get install -y -qq libatomic1 2>/dev/null || true
+
+    # Find and symlink libatomic.so
     if [ ! -f /usr/lib/x86_64-linux-gnu/libatomic.so ]; then
         # Try 1: gcc -print-file-name
         gcc_path=$(gcc -print-file-name=libatomic.so 2>/dev/null)
@@ -109,6 +114,24 @@ install_dependencies() {
                 log_warn "libatomic.so not found - 128-bit atomics may fail"
             fi
         fi
+    fi
+
+    # Verify libatomic.so exists and has the required symbol
+    if [ -f /usr/lib/x86_64-linux-gnu/libatomic.so ]; then
+        log_info "libatomic.so found at: $(readlink -f /usr/lib/x86_64-linux-gnu/libatomic.so)"
+        if nm -D /usr/lib/x86_64-linux-gnu/libatomic.so 2>/dev/null | grep -q "sync_val_compare_and_swap_16"; then
+            log_info "libatomic.so has __sync_val_compare_and_swap_16"
+        else
+            log_warn "libatomic.so does NOT have __sync_val_compare_and_swap_16"
+            # Try to find it in GCC's internal library
+            gcc_lib=$(gcc -print-file-name=libatomic.so 2>/dev/null)
+            if [ -n "$gcc_lib" ] && [ -f "$gcc_lib" ] && nm -D "$gcc_lib" 2>/dev/null | grep -q "sync_val_compare_and_swap_16"; then
+                log_info "Found in GCC lib: $gcc_lib"
+                ln -sf "$gcc_lib" /usr/lib/x86_64-linux-gnu/libatomic.so
+            fi
+        fi
+    else
+        log_error "libatomic.so not found after setup!"
     fi
 }
 
@@ -182,3 +205,4 @@ main() {
 }
 
 main "$@"
+
