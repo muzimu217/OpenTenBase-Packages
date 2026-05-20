@@ -25,10 +25,10 @@ RUN apt-get update && apt-get install -y \
     liblz4-dev \
     libzstd-dev \
     libssh2-1-dev \
-    libpqxx-dev \
-    libcli11-dev \
     pkg-config \
     libtool \
+    && (apt-get install -y libpqxx-dev || true) \
+    && (apt-get install -y libcli11-dev || true) \
     && rm -rf /var/lib/apt/lists/*
 
 # Work directory
