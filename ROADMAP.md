@@ -1,43 +1,43 @@
-# OpenTenBase 官方级包仓库规划
+# OpenTenBase Official-Grade Package Repository Roadmap
 
-[English](ROADMAP.md) | [中文](ROADMAP_zh.md)
+English | [中文](ROADMAP_zh.md)
 
-## 愿景
+## Vision
 
-为 OpenTenBase 构建一套**长期、稳定、跨发行版、适配未来版本**的「官方级软件打包/分发体系」，像 PostgreSQL、Docker 那样，给 OpenTenBase 做一套**可长期维护、自动更新、多系统兼容**的包仓库。
+Build a **long-term, stable, cross-distro, future-version-adaptable** "official-grade software packaging/distribution system" for OpenTenBase, like PostgreSQL and Docker, creating a **maintainable, auto-updating, multi-system compatible** package repository.
 
 ---
 
-## 长期目标
+## Long-Term Goals
 
-### 核心目标
+### Core Objectives
 
-1. **支持 Debian / Ubuntu 全系列**（未来扩展 RHEL/CentOS/Fedora）
-2. **支持 OpenTenBase 自身多版本并存**（v5.0 / v6.0 / 开发版）
-3. **自动构建、自动签名、自动发布**，用户一行命令安装
-4. **长期可维护**，项目更新不用重新造轮子
-5. **符合 Linux 发行版标准**，可直接贡献给官方
+1. **Support Debian / Ubuntu full series** (future expansion to RHEL/CentOS/Fedora)
+2. **Support multiple OpenTenBase versions coexisting** (v5.0 / v6.0 / development)
+3. **Auto-build, auto-sign, auto-publish**, one-command installation for users
+4. **Long-term maintainable**, no need to reinvent the wheel when project updates
+5. **Comply with Linux distribution standards**, ready to contribute to official
 
-### 用户体验目标
+### User Experience Goals
 
 ```bash
-# 用户安装方式（极致友好）
+# User installation (extremely friendly)
 curl -sSL https://opentenbase.org/repo/setup.sh | sudo bash
 sudo apt install opentenbase
 
-# 或指定版本
+# Or specify version
 sudo apt install opentenbase-5.0
 ```
 
 ---
 
-## 技术架构
+## Technical Architecture
 
-### 整体架构
+### Overall Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    OpenTenBase 包仓库                        │
+│                    OpenTenBase Package Repository            │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
 │  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐   │
@@ -49,43 +49,43 @@ sudo apt install opentenbase-5.0
 │           └──────────────────┼──────────────────┘           │
 │                              │                              │
 │                    ┌─────────▼─────────┐                    │
-│                    │   GPG 签名验证    │                    │
+│                    │   GPG Signature   │                    │
 │                    └─────────┬─────────┘                    │
 │                              │                              │
 │                    ┌─────────▼─────────┐                    │
-│                    │   版本管理系统    │                    │
+│                    │   Version Manager │                    │
 │                    │   (5.0/6.0/dev)   │                    │
 │                    └─────────┬─────────┘                    │
 │                              │                              │
 │                    ┌─────────▼─────────┐                    │
-│                    │   CI/CD 流水线    │                    │
+│                    │   CI/CD Pipeline  │                    │
 │                    │   (GitHub Actions)│                    │
 │                    └───────────────────┘                    │
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### 目录结构
+### Directory Structure
 
 ```
 opentenbase-repo/
 ├── .github/
 │   └── workflows/
-│       ├── build-deb.yml          # Debian/Ubuntu 构建
-│       ├── build-rpm.yml          # RHEL/CentOS 构建
-│       └── publish-repo.yml       # 发布到仓库
+│       ├── build-deb.yml          # Debian/Ubuntu build
+│       ├── build-rpm.yml          # RHEL/CentOS build
+│       └── publish-repo.yml       # Publish to repository
 ├── docker/
-│   ├── ubuntu-20.04.Dockerfile    # Ubuntu 20.04 构建环境
-│   ├── ubuntu-22.04.Dockerfile    # Ubuntu 22.04 构建环境
-│   ├── ubuntu-24.04.Dockerfile    # Ubuntu 24.04 构建环境
-│   ├── debian-11.Dockerfile       # Debian 11 构建环境
-│   └── debian-12.Dockerfile       # Debian 12 构建环境
+│   ├── ubuntu-20.04.Dockerfile    # Ubuntu 20.04 build environment
+│   ├── ubuntu-22.04.Dockerfile    # Ubuntu 22.04 build environment
+│   ├── ubuntu-24.04.Dockerfile    # Ubuntu 24.04 build environment
+│   ├── debian-11.Dockerfile       # Debian 11 build environment
+│   └── debian-12.Dockerfile       # Debian 12 build environment
 ├── scripts/
-│   ├── build-deb.sh               # 构建脚本
-│   ├── sign-packages.sh           # 签名脚本
-│   └── publish-repo.sh            # 发布脚本
+│   ├── build-deb.sh               # Build script
+│   ├── sign-packages.sh           # Signing script
+│   └── publish-repo.sh            # Publishing script
 ├── repo/
-│   ├── apt/                       # APT 仓库
+│   ├── apt/                       # APT repository
 │   │   ├── dists/
 │   │   │   ├── focal/             # Ubuntu 20.04
 │   │   │   ├── jammy/             # Ubuntu 22.04
@@ -96,151 +96,151 @@ opentenbase-repo/
 │   │       └── main/
 │   │           └── o/
 │   │               └── opentenbase/
-│   └── rpm/                       # RPM 仓库
+│   └── rpm/                       # RPM repository
 │       ├── el8/                   # RHEL/CentOS 8
 │       ├── el9/                   # RHEL/CentOS 9
 │       └── fedora/                # Fedora
 ├── docs/
-│   ├── installation.md            # 安装指南
-│   ├── configuration.md           # 配置指南
-│   └── troubleshooting.md         # 故障排查
-└── README.md                      # 项目说明
+│   ├── installation.md            # Installation guide
+│   ├── configuration.md           # Configuration guide
+│   └── troubleshooting.md         # Troubleshooting
+└── README.md                      # Project description
 ```
 
 ---
 
-## 实施路径
+## Implementation Path
 
-### 第 1 阶段：短期（1–2 周）——先把基础打牢
+### Phase 1: Short-term (1–2 weeks) — Lay the Foundation
 
-#### 目标
-- 用 Docker 统一构建环境
-- 构建 Ubuntu 20.04/22.04/24.04 + Debian 11/12 安装包
-- 标准化 deb 打包规范
+#### Goals
+- Unify build environment with Docker
+- Build Ubuntu 20.04/22.04/24.04 + Debian 11/12 packages
+- Standardize deb packaging specifications
 
-#### 任务清单
+#### Task List
 
-- [ ] **创建 Docker 构建环境**
+- [ ] **Create Docker build environments**
   - [ ] Ubuntu 20.04 Dockerfile
   - [ ] Ubuntu 22.04 Dockerfile
   - [ ] Ubuntu 24.04 Dockerfile
   - [ ] Debian 11 Dockerfile
   - [ ] Debian 12 Dockerfile
 
-- [ ] **更新 CI 工作流**
-  - [ ] 修改 `.github/workflows/build.yml`
-  - [ ] 添加 Docker 构建步骤
-  - [ ] 测试所有版本构建
+- [ ] **Update CI workflows**
+  - [ ] Modify `.github/workflows/build.yml`
+  - [ ] Add Docker build steps
+  - [ ] Test all version builds
 
-- [ ] **标准化打包规范**
-  - [ ] 版本号规范（遵循 Debian 策略）
-  - [ ] 依赖声明规范
-  - [ ] 服务文件规范
-  - [ ] 日志路径规范
-  - [ ] 配置文件规范
+- [ ] **Standardize packaging specifications**
+  - [ ] Version number specification (follow Debian policy)
+  - [ ] Dependency declaration specification
+  - [ ] Service file specification
+  - [ ] Log path specification
+  - [ ] Configuration file specification
 
-- [ ] **测试验证**
-  - [ ] Ubuntu 20.04 安装测试
-  - [ ] Ubuntu 22.04 安装测试
-  - [ ] Ubuntu 24.04 安装测试
-  - [ ] Debian 11 安装测试
-  - [ ] Debian 12 安装测试
+- [ ] **Testing and verification**
+  - [ ] Ubuntu 20.04 installation test
+  - [ ] Ubuntu 22.04 installation test
+  - [ ] Ubuntu 24.04 installation test
+  - [ ] Debian 11 installation test
+  - [ ] Debian 12 installation test
 
-#### 预期成果
+#### Expected Results
 
-- 5 个发行版的 .deb 包全部构建成功
-- 所有包通过 lintian 检查
-- 安装测试全部通过
-
----
-
-### 第 2 阶段：中期（1–2 月）——建立官方级 APT 仓库
-
-#### 目标
-- 搭建带 GPG 签名的 APT 仓库
-- 一键安装脚本
-- 多版本管理
-
-#### 任务清单
-
-- [ ] **搭建 APT 仓库**
-  - [ ] 安装和配置 `reprepro`
-  - [ ] 创建仓库目录结构
-  - [ ] 配置 GPG 签名
-  - [ ] 测试仓库功能
-
-- [ ] **创建一键安装脚本**
-  - [ ] 检测系统版本
-  - [ ] 添加 GPG 密钥
-  - [ ] 配置仓库源
-  - [ ] 安装软件包
-
-- [ ] **多版本管理**
-  - [ ] 设计版本命名规范
-  - [ ] 支持多版本并存
-  - [ ] 版本切换机制
-
-- [ ] **文档完善**
-  - [ ] 安装指南（中英文）
-  - [ ] 配置指南
-  - [ ] 故障排查指南
-
-#### 预期成果
-
-- APT 仓库正常运行
-- 用户可通过一条命令安装
-- 支持多版本并存
+- 5 distro .deb packages all built successfully
+- All packages pass lintian checks
+- All installation tests pass
 
 ---
 
-### 第 3 阶段：长期（3–6 月）——跨平台生态
+### Phase 2: Medium-term (1–2 months) — Build Official-Grade APT Repository
 
-#### 目标
-- RPM 包支持（RHEL/CentOS/Rocky/Fedora）
-- 自动 CI/CD 流水线
-- 可直接合入 OpenTenBase 官方仓库
+#### Goals
+- Build APT repository with GPG signing
+- One-click installation script
+- Multi-version management
 
-#### 任务清单
+#### Task List
 
-- [ ] **RPM 包支持**
-  - [ ] 创建 RPM spec 文件
-  - [ ] 构建 RHEL/CentOS 8 包
-  - [ ] 构建 RHEL/CentOS 9 包
-  - [ ] 构建 Fedora 包
+- [ ] **Build APT repository**
+  - [ ] Install and configure `reprepro`
+  - [ ] Create repository directory structure
+  - [ ] Configure GPG signing
+  - [ ] Test repository functionality
 
-- [ ] **自动 CI/CD 流水线**
-  - [ ] 版本发布自动触发
-  - [ ] 自动构建所有平台
-  - [ ] 自动签名和发布
-  - [ ] 自动更新仓库
+- [ ] **Create one-click installation script**
+  - [ ] Detect system version
+  - [ ] Add GPG key
+  - [ ] Configure repository source
+  - [ ] Install packages
 
-- [ ] **官方贡献准备**
-  - [ ] 代码质量审查
-  - [ ] 文档完善
-  - [ ] 测试覆盖率提升
-  - [ ] 提交到 OpenTenBase 官方
+- [ ] **Multi-version management**
+  - [ ] Design version naming convention
+  - [ ] Support multi-version coexistence
+  - [ ] Version switching mechanism
 
-#### 预期成果
+- [ ] **Documentation completion**
+  - [ ] Installation guide (bilingual)
+  - [ ] Configuration guide
+  - [ ] Troubleshooting guide
 
-- 支持 10+ 发行版
-- 全自动 CI/CD 流水线
-- 可直接贡献给官方
+#### Expected Results
+
+- APT repository running normally
+- Users can install with one command
+- Support multi-version coexistence
 
 ---
 
-## 技术实现
+### Phase 3: Long-term (3–6 months) — Cross-Platform Ecosystem
 
-### Docker 构建环境
+#### Goals
+- RPM package support (RHEL/CentOS/Rocky/Fedora)
+- Automated CI/CD pipeline
+- Ready to merge into OpenTenBase official repository
+
+#### Task List
+
+- [ ] **RPM package support**
+  - [ ] Create RPM spec files
+  - [ ] Build RHEL/CentOS 8 packages
+  - [ ] Build RHEL/CentOS 9 packages
+  - [ ] Build Fedora packages
+
+- [ ] **Automated CI/CD pipeline**
+  - [ ] Version release auto-trigger
+  - [ ] Auto-build all platforms
+  - [ ] Auto-sign and publish
+  - [ ] Auto-update repository
+
+- [ ] **Official contribution preparation**
+  - [ ] Code quality review
+  - [ ] Documentation completion
+  - [ ] Test coverage improvement
+  - [ ] Submit to OpenTenBase official
+
+#### Expected Results
+
+- Support 10+ distributions
+- Fully automated CI/CD pipeline
+- Ready to contribute to official
+
+---
+
+## Technical Implementation
+
+### Docker Build Environment
 
 #### Ubuntu 20.04 Dockerfile
 
 ```dockerfile
 FROM ubuntu:20.04
 
-# 设置非交互模式
+# Set non-interactive mode
 ENV DEBIAN_FRONTEND=noninteractive
 
-# 安装构建依赖
+# Install build dependencies
 RUN apt-get update && apt-get install -y \
     build-essential \
     debhelper \
@@ -268,18 +268,18 @@ RUN apt-get update && apt-get install -y \
     libtool \
     && rm -rf /var/lib/apt/lists/*
 
-# 设置工作目录
+# Set working directory
 WORKDIR /build
 
-# 复制构建脚本
+# Copy build script
 COPY scripts/build-deb.sh /build/
 RUN chmod +x /build/build-deb.sh
 
-# 默认执行构建
+# Default execution
 CMD ["/build/build-deb.sh"]
 ```
 
-### CI 工作流
+### CI Workflow
 
 ```yaml
 # .github/workflows/build-multi.yml
@@ -351,26 +351,26 @@ jobs:
 
       - name: Sign and publish
         run: |
-          # 签名和发布到仓库
+          # Sign and publish to repository
           ./scripts/publish-repo.sh
 ```
 
-### 一键安装脚本
+### One-Click Installation Script
 
 ```bash
 #!/bin/bash
-# OpenTenBase 一键安装脚本
+# OpenTenBase one-click installation script
 # Usage: curl -sSL https://opentenbase.org/repo/setup.sh | sudo bash
 
 set -e
 
-# 颜色定义
+# Color definitions
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-# 日志函数
+# Log functions
 log_info() {
     echo -e "${GREEN}[INFO]${NC} $1"
 }
@@ -383,18 +383,18 @@ log_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
-# 检查 root 权限
+# Check root privileges
 check_root() {
     if [ "$(id -u)" -ne 0 ]; then
-        log_error "必须以 root 权限运行此脚本"
+        log_error "This script must be run as root"
         exit 1
     fi
 }
 
-# 检测系统版本
+# Detect system version
 detect_os() {
     if [ ! -f /etc/os-release ]; then
-        log_error "无法检测操作系统版本"
+        log_error "Cannot detect operating system version"
         exit 1
     fi
 
@@ -410,17 +410,17 @@ detect_os() {
             CODENAME="$VERSION_CODENAME"
             ;;
         *)
-            log_error "不支持的操作系统: $ID"
+            log_error "Unsupported operating system: $ID"
             exit 1
             ;;
     esac
 
-    log_info "检测到: $OS $VERSION_ID ($CODENAME)"
+    log_info "Detected: $OS $VERSION_ID ($CODENAME)"
 }
 
-# 添加 GPG 密钥
+# Add GPG key
 add_gpg_key() {
-    log_info "添加 GPG 密钥..."
+    log_info "Adding GPG key..."
     
     curl -fsSL https://opentenbase.org/repo/gpg-key.asc | \
         gpg --dearmor -o /usr/share/keyrings/opentenbase-archive-keyring.gpg
@@ -428,9 +428,9 @@ add_gpg_key() {
     chmod 644 /usr/share/keyrings/opentenbase-archive-keyring.gpg
 }
 
-# 配置仓库源
+# Configure repository
 configure_repo() {
-    log_info "配置仓库源..."
+    log_info "Configuring repository..."
     
     echo "deb [signed-by=/usr/share/keyrings/opentenbase-archive-keyring.gpg] \
         https://opentenbase.org/repo/apt $CODENAME main" \
@@ -439,29 +439,29 @@ configure_repo() {
     chmod 644 /etc/apt/sources.list.d/opentenbase.list
 }
 
-# 安装 OpenTenBase
+# Install OpenTenBase
 install_opentenbase() {
-    log_info "更新软件包列表..."
+    log_info "Updating package list..."
     apt-get update -qq
     
-    log_info "安装 OpenTenBase..."
+    log_info "Installing OpenTenBase..."
     apt-get install -y opentenbase
     
-    log_info "安装完成！"
+    log_info "Installation complete!"
     echo ""
-    echo "快速开始:"
-    echo "  opentenbase-ctl init    # 初始化集群"
-    echo "  opentenbase-ctl start   # 启动所有节点"
-    echo "  opentenbase-ctl status  # 检查状态"
+    echo "Quick start:"
+    echo "  opentenbase-ctl init    # Initialize cluster"
+    echo "  opentenbase-ctl start   # Start all nodes"
+    echo "  opentenbase-ctl status  # Check status"
     echo ""
-    echo "连接数据库:"
+    echo "Connect to database:"
     echo "  opentenbase-psql -h 127.0.0.1 -p 5432 -U opentenbase -d postgres"
 }
 
-# 主函数
+# Main function
 main() {
     echo "========================================"
-    echo "  OpenTenBase 一键安装脚本"
+    echo "  OpenTenBase One-Click Installation"
     echo "========================================"
     echo ""
     
@@ -472,96 +472,96 @@ main() {
     install_opentenbase
 }
 
-# 执行主函数
+# Execute main function
 main "$@"
 ```
 
 ---
 
-## 成功案例参考
+## Successful Case Studies
 
-### PostgreSQL 官方仓库
+### PostgreSQL Official Repository
 
-- **仓库地址**: https://apt.postgresql.org/
-- **支持系统**: Ubuntu 20.04/22.04/24.04 + Debian 11/12
-- **特点**: 
-  - 每个版本独立的 `.deb` 包
-  - 通过仓库自动选择
-  - GPG 签名验证
-  - 多版本并存
+- **Repository URL**: https://apt.postgresql.org/
+- **Supported Systems**: Ubuntu 20.04/22.04/24.04 + Debian 11/12
+- **Features**: 
+  - Each version has independent `.deb` packages
+  - Auto-selection via repository
+  - GPG signature verification
+  - Multi-version coexistence
 
-### Docker 官方仓库
+### Docker Official Repository
 
-- **仓库地址**: https://download.docker.com/
-- **支持系统**: Ubuntu 20.04/22.04/24.04 + Debian 11/12 + CentOS/RHEL
-- **特点**:
-  - 统一的安装脚本
-  - 自动检测系统版本
-  - 一键安装
+- **Repository URL**: https://download.docker.com/
+- **Supported Systems**: Ubuntu 20.04/22.04/24.04 + Debian 11/12 + CentOS/RHEL
+- **Features**:
+  - Unified installation script
+  - Auto-detect system version
+  - One-click installation
 
-### NodeSource 仓库
+### NodeSource Repository
 
-- **仓库地址**: https://deb.nodesource.com/
-- **支持系统**: Ubuntu 20.04/22.04/24.04 + Debian 11/12
-- **特点**:
-  - 一键安装脚本
-  - 自动配置仓库
-  - 多版本管理
-
----
-
-## 维护策略
-
-### 版本发布流程
-
-1. **代码冻结**: 发布前 1 周冻结代码
-2. **测试验证**: 全平台测试
-3. **版本打 tag**: 使用语义化版本
-4. **自动构建**: CI 自动触发构建
-5. **签名发布**: 自动签名和发布
-6. **更新仓库**: 自动更新 APT/RPM 仓库
-
-### 安全更新策略
-
-1. **安全漏洞响应**: 24 小时内发布修复
-2. **自动通知**: 通过邮件列表通知用户
-3. **版本回退**: 支持快速回退到稳定版本
-
-### 文档更新策略
-
-1. **同步更新**: 代码和文档同步更新
-2. **多语言支持**: 中英文双语
-3. **版本化文档**: 每个版本独立文档
+- **Repository URL**: https://deb.nodesource.com/
+- **Supported Systems**: Ubuntu 20.04/22.04/24.04 + Debian 11/12
+- **Features**:
+  - One-click installation script
+  - Auto-configure repository
+  - Multi-version management
 
 ---
 
-## 总结
+## Maintenance Strategy
 
-### 方案优势
+### Version Release Process
 
-- ✅ **长期稳定**: 可维护 5-10 年
-- ✅ **全平台支持**: Debian/Ubuntu 全系列
-- ✅ **官方标准**: 符合 Linux 发行版标准
-- ✅ **用户友好**: 一键安装
-- ✅ **自动维护**: CI/CD 自动化
+1. **Code freeze**: Freeze code 1 week before release
+2. **Testing verification**: Full platform testing
+3. **Version tagging**: Use semantic versioning
+4. **Auto-build**: CI auto-triggers build
+5. **Sign and publish**: Auto-sign and publish
+6. **Update repository**: Auto-update APT/RPM repository
 
-### 对比其他方案
+### Security Update Strategy
 
-| 方案 | 支持版本 | 复杂度 | 用户体验 | 长期维护 | 推荐度 |
-|------|----------|--------|----------|----------|--------|
-| 扩展 CI 矩阵 | 3-4 个 | 低 | 中 | 差 | ⭐⭐ |
-| Launchpad PPA | 仅 Ubuntu | 中 | 高 | 中 | ⭐⭐⭐ |
-| Docker 容器 | 所有 | 中 | 中 | 中 | ⭐⭐⭐⭐ |
-| **自建 APT 仓库** | **所有** | **高** | **最高** | **最好** | **⭐⭐⭐⭐⭐** |
+1. **Security vulnerability response**: Release fix within 24 hours
+2. **Auto notification**: Notify users via mailing list
+3. **Version rollback**: Support quick rollback to stable version
 
-### 最终建议
+### Documentation Update Strategy
 
-**推荐选择：自建 APT 仓库 + Docker 构建**
-
-这是**开源项目官方打包的标准路线**，也是你能给 OpenTenBase 留下的**最有价值的长期贡献**。
+1. **Synchronous update**: Code and documentation update together
+2. **Multi-language support**: Chinese and English bilingual
+3. **Versioned documentation**: Each version has independent documentation
 
 ---
 
-**文档版本**: 1.0  
-**最后更新**: 2026-05-20  
-**维护者**: muzimu217
+## Summary
+
+### Solution Advantages
+
+- ✅ **Long-term stable**: Maintainable for 5-10 years
+- ✅ **Full platform support**: Debian/Ubuntu full series
+- ✅ **Official standard**: Complies with Linux distribution standards
+- ✅ **User friendly**: One-click installation
+- ✅ **Auto maintenance**: CI/CD automation
+
+### Comparison with Other Solutions
+
+| Solution | Supported Versions | Complexity | User Experience | Long-term Maintenance | Recommendation |
+|----------|-------------------|------------|-----------------|----------------------|----------------|
+| Expand CI matrix | 3-4 | Low | Medium | Poor | ⭐⭐ |
+| Launchpad PPA | Ubuntu only | Medium | High | Medium | ⭐⭐⭐ |
+| Docker container | All | Medium | Medium | Medium | ⭐⭐⭐⭐ |
+| **Self-built APT repo** | **All** | **High** | **Highest** | **Best** | **⭐⭐⭐⭐⭐** |
+
+### Final Recommendation
+
+**Recommended choice: Self-built APT repository + Docker build**
+
+This is the **standard route for official packaging of open source projects**, and also the **most valuable long-term contribution** you can leave for OpenTenBase.
+
+---
+
+**Document Version**: 1.0  
+**Last Updated**: 2026-05-20  
+**Maintainer**: muzimu217
