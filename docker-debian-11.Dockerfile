@@ -33,6 +33,11 @@ RUN apt-get update && apt-get install -y \
     && (apt-get install -y libcli11-dev || true) \
     && rm -rf /var/lib/apt/lists/*
 
+# Ensure libatomic.so symlink exists for linking
+RUN if [ ! -f /usr/lib/x86_64-linux-gnu/libatomic.so ] && [ -f /usr/lib/x86_64-linux-gnu/libatomic.so.1 ]; then \
+        ln -sf /usr/lib/x86_64-linux-gnu/libatomic.so.1 /usr/lib/x86_64-linux-gnu/libatomic.so; \
+    fi
+
 # Work directory
 WORKDIR /build
 
