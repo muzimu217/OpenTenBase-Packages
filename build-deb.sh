@@ -116,44 +116,11 @@ install_dependencies() {
         fi
     fi
 
-    # Verify libatomic.so exists and has the required symbol
+    # Verify libatomic.so exists
     if [ -f /usr/lib/x86_64-linux-gnu/libatomic.so ]; then
         log_info "libatomic.so found at: $(readlink -f /usr/lib/x86_64-linux-gnu/libatomic.so)"
-        if nm -D /usr/lib/x86_64-linux-gnu/libatomic.so 2>/dev/null | grep -q "sync_val_compare_and_swap_16"; then
-            log_info "libatomic.so has __sync_val_compare_and_swap_16"
-        else
-            log_warn "libatomic.so does NOT have __sync_val_compare_and_swap_16"
-            # Try to find it in GCC's internal libraries (gcc-12, gcc-13, etc.)
-            found=0
-            for gcc_ver in 13 12 11 10; do
-                gcc_lib_dir="/usr/lib/gcc/x86_64-linux-gnu/$gcc_ver"
-                for lib in "$gcc_lib_dir/libatomic.so" "$gcc_lib_dir/libatomic.a"; do
-                    if [ -f "$lib" ]; then
-                        if nm -D "$lib" 2>/dev/null | grep -q "sync_val_compare_and_swap_16" || \
-                           nm "$lib" 2>/dev/null | grep -q "sync_val_compare_and_swap_16"; then
-                            log_info "Found __sync_val_compare_and_swap_16 in: $lib"
-                            ln -sf "$lib" "/usr/lib/x86_64-linux-gnu/$(basename $lib)"
-                            found=1
-                            break 2
-                        fi
-                    fi
-                done
-            done
-            if [ "$found" -eq 0 ]; then
-                log_warn "No libatomic with __sync_val_compare_and_swap_16 found"
-                log_warn "Trying static libatomic from GCC..."
-                for gcc_ver in 13 12 11 10; do
-                    gcc_lib_dir="/usr/lib/gcc/x86_64-linux-gnu/$gcc_ver"
-                    if [ -f "$gcc_lib_dir/libatomic.a" ]; then
-                        log_info "Using static libatomic.a from gcc-$gcc_ver"
-                        ln -sf "$gcc_lib_dir/libatomic.a" /usr/lib/x86_64-linux-gnu/libatomic.a
-                        break
-                    fi
-                done
-            fi
-        fi
     else
-        log_error "libatomic.so not found after setup!"
+        log_warn "libatomic.so not found - 128-bit atomics patch will handle this"
     fi
 }
 
@@ -171,6 +138,11 @@ apply_patches() {
     # Apply nolic sharding patch
     if [ -f debian/patches/02-nolic-sharding.patch ]; then
         patch -p1 < debian/patches/02-nolic-sharding.patch || true
+    fi
+
+    # Apply 128-bit atomics fix (use __atomic builtins instead of libatomic)
+    if [ -f debian/patches/03-atomic128-x86.patch ]; then
+        patch -p1 < debian/patches/03-atomic128-x86.patch || true
     fi
 
     # Remove merge conflict artifact files

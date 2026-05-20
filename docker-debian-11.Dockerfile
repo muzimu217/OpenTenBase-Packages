@@ -26,9 +26,6 @@ RUN apt-get update && apt-get install -y \
     libzstd-dev \
     libssh2-1-dev \
     libatomic1 \
-    libatomic-ops-dev \
-    gcc-12 \
-    libgcc-12-dev \
     pkg-config \
     libtool \
     && (apt-get install -y libpqxx-dev || true) \
@@ -36,15 +33,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Ensure libatomic.so symlink exists for linking
-# Use gcc-12's libatomic which has 128-bit atomics support
-RUN set -e; \
-    GCC12_LIB=/usr/lib/gcc/x86_64-linux-gnu/12; \
-    if [ -f "$GCC12_LIB/libatomic.so" ]; then \
-        ln -sf "$GCC12_LIB/libatomic.so" /usr/lib/x86_64-linux-gnu/libatomic.so; \
-    elif [ -f "$GCC12_LIB/libatomic.a" ]; then \
-        ln -sf "$GCC12_LIB/libatomic.a" /usr/lib/x86_64-linux-gnu/libatomic.a; \
-    fi; \
-    if [ ! -f /usr/lib/x86_64-linux-gnu/libatomic.so ] && [ -f /usr/lib/x86_64-linux-gnu/libatomic.so.1 ]; then \
+RUN if [ ! -f /usr/lib/x86_64-linux-gnu/libatomic.so ] && [ -f /usr/lib/x86_64-linux-gnu/libatomic.so.1 ]; then \
         ln -sf /usr/lib/x86_64-linux-gnu/libatomic.so.1 /usr/lib/x86_64-linux-gnu/libatomic.so; \
     fi
 
