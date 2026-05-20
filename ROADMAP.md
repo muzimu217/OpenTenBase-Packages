@@ -169,10 +169,10 @@ opentenbase-repo/
   - [x] Configure GPG signing
   - [ ] Test repository functionality
 
-- [ ] **Create one-click installation script**
-  - [ ] Detect system version
-  - [ ] Add GPG key
-  - [ ] Configure repository source
+- [x] **Create one-click installation script**
+  - [x] Detect system version
+  - [x] Add GPG key
+  - [x] Configure repository source
   - [ ] Install packages
 
 - [ ] **Multi-version management**
@@ -588,6 +588,7 @@ This is the **standard route for official packaging of open source projects**, a
   - [x] `build-deb.sh` - Docker build script
   - [x] `setup-apt-repo.sh` - APT repository setup script
   - [x] `sign-packages.sh` - GPG signing script
+  - [x] `setup-apt.sh` - One-click installation script
 
 ### In Progress 🔄
 
@@ -641,6 +642,6 @@ This is the **standard route for official packaging of open source projects**, a
 
 ---
 
-**Document Version**: 1.1  
+**Document Version**: 1.2  
 **Last Updated**: 2026-05-20  
 **Maintainer**: muzimu217
