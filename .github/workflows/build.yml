@@ -36,8 +36,8 @@ jobs:
           mkdir -p source/debian
           # Copy debian/ contents directly
           cp -a packaging/debian/* source/debian/
-          # Copy config/ directory
-          cp -a packaging/config source/debian/
+          # Copy config/ to source root (referenced by debian/rules)
+          cp -a packaging/config source/
           # Copy patches/
           cp -a packaging/patches source/debian/
 
