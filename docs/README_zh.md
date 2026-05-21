@@ -27,8 +27,10 @@ wget https://github.com/muzimu217/OpenTenBase-deb/releases/download/v5.0-multi9/
 wget https://github.com/muzimu217/OpenTenBase-deb/releases/download/v5.0-multi9/opentenbase-server_5.0-1ubuntu1.noble_amd64.deb
 wget https://github.com/muzimu217/OpenTenBase-deb/releases/download/v5.0-multi9/opentenbase-client_5.0-1ubuntu1.noble_amd64.deb
 wget https://github.com/muzimu217/OpenTenBase-deb/releases/download/v5.0-multi9/opentenbase-contrib_5.0-1ubuntu1.noble_amd64.deb
-sudo apt install ./*.deb
+sudo dpkg -i ./*.deb || sudo apt-get install -f -y
 ```
+
+> **注意**：如果 `dpkg` 报告缺少依赖（如 `libossp-uuid16` 或 `libpqxx-7.8t64`），这是打包元数据错误——二进制文件运行时**并不需要**这些库。使用 `sudo dpkg --force-depends -i ./*.deb` 安装，然后执行 `sudo mkdir -p /usr/lib/opentenbase/lib/postgresql` 再继续。
 
 ## 软件包说明
 
@@ -67,8 +69,8 @@ opentenbase-ctl status
 ### 连接数据库
 
 ```bash
-# 通过 psql 连接
-opentenbase-psql -h 127.0.0.1 -p 5432 -U opentenbase -d postgres
+# 通过 psql 连接（默认数据库为 template1）
+opentenbase-psql -h 127.0.0.1 -p 5432 -U opentenbase -d template1
 ```
 
 ### 停止集群
@@ -164,12 +166,14 @@ fakeroot debian/rules binary
 
 #### 1. 安装失败：依赖关系问题
 
-```bash
-# 更新软件包列表
-sudo apt update
+如果 `sudo apt install ./*.deb` 报告缺少 `libossp-uuid16` 或 `libpqxx-7.8t64` 等依赖：
 
-# 修复依赖关系
-sudo apt install -f
+```bash
+# 强制安装（这些库运行时并不需要）
+sudo dpkg --force-depends -i ./*.deb
+
+# 创建缺失的插件目录
+sudo mkdir -p /usr/lib/opentenbase/lib/postgresql
 ```
 
 #### 2. 无法连接到数据库
@@ -180,6 +184,9 @@ opentenbase-ctl status
 
 # 查看日志
 tail -f /var/log/opentenbase/coord.log
+
+# 注意：默认数据库是 template1，不是 postgres
+opentenbase-psql -h 127.0.0.1 -p 5432 -U opentenbase -d template1
 ```
 
 #### 3. GTM 启动失败

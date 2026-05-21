@@ -27,8 +27,10 @@ wget https://github.com/muzimu217/OpenTenBase-deb/releases/download/v5.0-multi9/
 wget https://github.com/muzimu217/OpenTenBase-deb/releases/download/v5.0-multi9/opentenbase-server_5.0-1ubuntu1.noble_amd64.deb
 wget https://github.com/muzimu217/OpenTenBase-deb/releases/download/v5.0-multi9/opentenbase-client_5.0-1ubuntu1.noble_amd64.deb
 wget https://github.com/muzimu217/OpenTenBase-deb/releases/download/v5.0-multi9/opentenbase-contrib_5.0-1ubuntu1.noble_amd64.deb
-sudo apt install ./*.deb
+sudo dpkg -i ./*.deb || sudo apt-get install -f -y
 ```
+
+> **Note**: If `dpkg` reports missing dependencies (e.g. `libossp-uuid16` or `libpqxx-7.8t64`), these are packaging metadata errors — the binaries do **not** actually require these libraries at runtime. Use `sudo dpkg --force-depends -i ./*.deb` to install, then run `sudo mkdir -p /usr/lib/opentenbase/lib/postgresql` before proceeding.
 
 ## Packages
 
@@ -67,8 +69,8 @@ opentenbase-ctl status
 ### Connect to Database
 
 ```bash
-# Connect via psql
-opentenbase-psql -h 127.0.0.1 -p 5432 -U opentenbase -d postgres
+# Connect via psql (default database is template1)
+opentenbase-psql -h 127.0.0.1 -p 5432 -U opentenbase -d template1
 ```
 
 ### Stop Cluster
@@ -164,12 +166,14 @@ fakeroot debian/rules binary
 
 #### 1. Installation Failed: Dependency Issues
 
-```bash
-# Update package list
-sudo apt update
+If `sudo apt install ./*.deb` fails with missing dependencies like `libossp-uuid16` or `libpqxx-7.8t64`:
 
-# Fix dependencies
-sudo apt install -f
+```bash
+# Force install (these libraries are NOT actually needed at runtime)
+sudo dpkg --force-depends -i ./*.deb
+
+# Create missing plugin directory
+sudo mkdir -p /usr/lib/opentenbase/lib/postgresql
 ```
 
 #### 2. Cannot Connect to Database
@@ -180,11 +184,12 @@ opentenbase-ctl status
 
 # View logs
 tail -f /var/log/opentenbase/coord.log
+
+# Note: default database is template1, not postgres
+opentenbase-psql -h 127.0.0.1 -p 5432 -U opentenbase -d template1
 ```
 
 #### 3. GTM Startup Failed
-
-```bash
 # Check GTM logs
 tail -f /var/log/opentenbase/gtm.log
 
