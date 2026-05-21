@@ -10,7 +10,7 @@ Ubuntu .deb 打包方案，用于 [OpenTenBase](https://github.com/OpenTenBase/O
 
 ```bash
 # 下载并运行安装脚本
-curl -sLO https://github.com/muzimu217/OpenTenBase-deb/releases/download/v5.0-multi9/install.sh
+curl -sLO https://github.com/muzimu217/OpenTenBase-deb/releases/download/v5.0-multi10/install.sh
 sudo bash install.sh
 ```
 
@@ -23,10 +23,10 @@ sudo bash install.sh
 
 ```bash
 # 对于 Ubuntu 24.04 (Noble)
-wget https://github.com/muzimu217/OpenTenBase-deb/releases/download/v5.0-multi9/opentenbase_5.0-1ubuntu1.noble_all.deb
-wget https://github.com/muzimu217/OpenTenBase-deb/releases/download/v5.0-multi9/opentenbase-server_5.0-1ubuntu1.noble_amd64.deb
-wget https://github.com/muzimu217/OpenTenBase-deb/releases/download/v5.0-multi9/opentenbase-client_5.0-1ubuntu1.noble_amd64.deb
-wget https://github.com/muzimu217/OpenTenBase-deb/releases/download/v5.0-multi9/opentenbase-contrib_5.0-1ubuntu1.noble_amd64.deb
+wget https://github.com/muzimu217/OpenTenBase-deb/releases/download/v5.0-multi10/opentenbase_5.0-1ubuntu1.noble_all.deb
+wget https://github.com/muzimu217/OpenTenBase-deb/releases/download/v5.0-multi10/opentenbase-server_5.0-1ubuntu1.noble_amd64.deb
+wget https://github.com/muzimu217/OpenTenBase-deb/releases/download/v5.0-multi10/opentenbase-client_5.0-1ubuntu1.noble_amd64.deb
+wget https://github.com/muzimu217/OpenTenBase-deb/releases/download/v5.0-multi10/opentenbase-contrib_5.0-1ubuntu1.noble_amd64.deb
 sudo dpkg -i ./*.deb || sudo apt-get install -f -y
 ```
 
@@ -313,11 +313,11 @@ ls -lh output/*.deb
 
 ```bash
 # 创建新版本标签
-./release.sh v5.0-multi9
+./release.sh v5.0-multi10
 
 # 或手动创建
-git tag -a v5.0-multi9 -m "Release v5.0-multi9"
-git push origin v5.0-multi9
+git tag -a v5.0-multi10 -m "Release v5.0-multi10"
+git push origin v5.0-multi10
 ```
 
 ## 版本发布
@@ -329,13 +329,13 @@ git push origin v5.0-multi9
 ./release.sh --help
 
 # 模拟运行（不实际执行）
-./release.sh --dry-run v5.0-multi9
+./release.sh --dry-run v5.0-multi10
 
 # 带自定义消息的发布
-./release.sh -m "Bug 修复和改进" v5.0-multi9
+./release.sh -m "Bug 修复和改进" v5.0-multi10
 
 # 强制发布（跳过确认）
-./release.sh --force v5.0-multi9
+./release.sh --force v5.0-multi10
 ```
 
 ### 手动发布
@@ -348,18 +348,18 @@ git push origin v5.0-multi9
 
 ```bash
 # 更新 install.sh
-sed -i 's/TAG=".*"/TAG="v5.0-multi9"/' install.sh
+sed -i 's/TAG=".*"/TAG="v5.0-multi10"/' install.sh
 
 # 提交
 git add install.sh
-git commit -m "chore: update install.sh TAG to v5.0-multi9"
+git commit -m "chore: update install.sh TAG to v5.0-multi10"
 
 # 创建标签
-git tag -a v5.0-multi9 -m "Release v5.0-multi9"
+git tag -a v5.0-multi10 -m "Release v5.0-multi10"
 
 # 推送
 git push origin main
-git push origin v5.0-multi9
+git push origin v5.0-multi10
 ```
 
 ## 贡献指南

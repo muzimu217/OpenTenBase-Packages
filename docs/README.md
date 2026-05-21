@@ -10,7 +10,7 @@ Ubuntu .deb packaging for [OpenTenBase](https://github.com/OpenTenBase/OpenTenBa
 
 ```bash
 # Download and run installer
-curl -sLO https://github.com/muzimu217/OpenTenBase-deb/releases/download/v5.0-multi9/install.sh
+curl -sLO https://github.com/muzimu217/OpenTenBase-deb/releases/download/v5.0-multi10/install.sh
 sudo bash install.sh
 ```
 
@@ -23,10 +23,10 @@ The installer automatically:
 
 ```bash
 # For Ubuntu 24.04 (Noble)
-wget https://github.com/muzimu217/OpenTenBase-deb/releases/download/v5.0-multi9/opentenbase_5.0-1ubuntu1.noble_all.deb
-wget https://github.com/muzimu217/OpenTenBase-deb/releases/download/v5.0-multi9/opentenbase-server_5.0-1ubuntu1.noble_amd64.deb
-wget https://github.com/muzimu217/OpenTenBase-deb/releases/download/v5.0-multi9/opentenbase-client_5.0-1ubuntu1.noble_amd64.deb
-wget https://github.com/muzimu217/OpenTenBase-deb/releases/download/v5.0-multi9/opentenbase-contrib_5.0-1ubuntu1.noble_amd64.deb
+wget https://github.com/muzimu217/OpenTenBase-deb/releases/download/v5.0-multi10/opentenbase_5.0-1ubuntu1.noble_all.deb
+wget https://github.com/muzimu217/OpenTenBase-deb/releases/download/v5.0-multi10/opentenbase-server_5.0-1ubuntu1.noble_amd64.deb
+wget https://github.com/muzimu217/OpenTenBase-deb/releases/download/v5.0-multi10/opentenbase-client_5.0-1ubuntu1.noble_amd64.deb
+wget https://github.com/muzimu217/OpenTenBase-deb/releases/download/v5.0-multi10/opentenbase-contrib_5.0-1ubuntu1.noble_amd64.deb
 sudo dpkg -i ./*.deb || sudo apt-get install -f -y
 ```
 
@@ -311,11 +311,11 @@ To trigger a build:
 
 ```bash
 # Create a new version tag
-./release.sh v5.0-multi9
+./release.sh v5.0-multi10
 
 # Or manually
-git tag -a v5.0-multi9 -m "Release v5.0-multi9"
-git push origin v5.0-multi9
+git tag -a v5.0-multi10 -m "Release v5.0-multi10"
+git push origin v5.0-multi10
 ```
 
 ## Version Release
@@ -327,13 +327,13 @@ git push origin v5.0-multi9
 ./release.sh --help
 
 # Dry run (test without executing)
-./release.sh --dry-run v5.0-multi9
+./release.sh --dry-run v5.0-multi10
 
 # Release with custom message
-./release.sh -m "Bug fixes and improvements" v5.0-multi9
+./release.sh -m "Bug fixes and improvements" v5.0-multi10
 
 # Force release (skip confirmation)
-./release.sh --force v5.0-multi9
+./release.sh --force v5.0-multi10
 ```
 
 ### Manual Release
@@ -346,18 +346,18 @@ git push origin v5.0-multi9
 
 ```bash
 # Update install.sh
-sed -i 's/TAG=".*"/TAG="v5.0-multi9"/' install.sh
+sed -i 's/TAG=".*"/TAG="v5.0-multi10"/' install.sh
 
 # Commit
 git add install.sh
-git commit -m "chore: update install.sh TAG to v5.0-multi9"
+git commit -m "chore: update install.sh TAG to v5.0-multi10"
 
 # Create tag
-git tag -a v5.0-multi9 -m "Release v5.0-multi9"
+git tag -a v5.0-multi10 -m "Release v5.0-multi10"
 
 # Push
 git push origin main
-git push origin v5.0-multi9
+git push origin v5.0-multi10
 ```
 
 ## Contributing
