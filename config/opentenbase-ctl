@@ -28,6 +28,12 @@ ensure_dirs() {
 
 cmd_init() {
     ensure_dirs
+    # 检测 CPU 核心数并设置 GTM 线程数
+    CPU_CORES=$(nproc 2>/dev/null || echo "2")
+    # GTM 线程数不能超过 CPU 核心数，避免 "binding threads failed" 错误
+    GTM_THREADS=$((CPU_CORES < 4 ? CPU_CORES : 4))
+    echo ">> Detected $CPU_CORES CPU cores, setting GTM threads to $GTM_THREADS"
+
     # GTM
     if [ ! -f "$GTM_PGDATA/gtm.conf" ]; then
         install -d -o "$OTB_USER" -g "$OTB_GROUP" -m 0700 "$GTM_PGDATA"
@@ -36,6 +42,8 @@ cmd_init() {
         # Override port
         sed -i "s/^port =.*/port = $GTM_PORT/" "$GTM_PGDATA/gtm.conf"
         sed -i "s/^nodename =.*/nodename = 'gtm_master'/" "$GTM_PGDATA/gtm.conf"
+        # 设置线程数，避免绑定失败（2 核系统会报 FATAL: binding threads failed for 22）
+        echo "gtm_thread_count = $GTM_THREADS" >> "$GTM_PGDATA/gtm.conf"
     else
         echo ">> gtm already initialised, skipping"
     fi

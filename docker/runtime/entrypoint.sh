@@ -22,7 +22,7 @@ wait_for_port() {
     local host=$1 port=$2 timeout=${3:-60}
     log "Waiting for ${host}:${port}..."
     for i in $(seq 1 "$timeout"); do
-        if nc -z "$host" "$port" 2>/dev/null; then
+        if bash -c "echo > /dev/tcp/${host}/${port}" 2>/dev/null; then
             log "${host}:${port} is ready"
             return 0
         fi
@@ -40,7 +40,7 @@ init_gtm() {
         log "Initializing GTM..."
         mkdir -p "$DATA_DIR"
         chown opentenbase:opentenbase "$DATA_DIR"
-        sudo -u opentenbase /usr/lib/opentenbase/bin/initgtm -D "$DATA_DIR" --nodename=gtm
+        sudo -u opentenbase /usr/lib/opentenbase/bin/initgtm -Z gtm -D "$DATA_DIR"
 
         cat >> "$DATA_DIR/gtm.conf" <<EOF
 port = $GTM_PORT
@@ -60,7 +60,7 @@ init_coordinator() {
         log "Initializing Coordinator..."
         mkdir -p "$DATA_DIR"
         chown opentenbase:opentenbase "$DATA_DIR"
-        sudo -u opentenbase /usr/lib/opentenbase/bin/initdb -D "$DATA_DIR" --nodename=coordinator
+        sudo -u opentenbase /usr/lib/opentenbase/bin/initdb -D "$DATA_DIR" --nodename=coordinator --nodetype=coordinator
 
         cat >> "$DATA_DIR/postgresql.conf" <<EOF
 port = $COORD_PORT
@@ -77,7 +77,7 @@ EOF
     wait_for_port "$GTM_HOST" "$GTM_PORT"
 
     log "Starting Coordinator on port $COORD_PORT..."
-    sudo -u opentenbase /usr/lib/opentenbase/bin/postgres -D "$DATA_DIR" &
+    sudo -u opentenbase /usr/lib/opentenbase/bin/postgres --coordinator -D "$DATA_DIR" &
     COORD_PID=$!
 
     # Wait for coordinator to accept connections
@@ -106,7 +106,7 @@ init_datanode() {
         log "Initializing Datanode..."
         mkdir -p "$DATA_DIR"
         chown opentenbase:opentenbase "$DATA_DIR"
-        sudo -u opentenbase /usr/lib/opentenbase/bin/initdb -D "$DATA_DIR" --nodename="$NODE_NAME"
+        sudo -u opentenbase /usr/lib/opentenbase/bin/initdb -D "$DATA_DIR" --nodename="$NODE_NAME" --nodetype=datanode
 
         cat >> "$DATA_DIR/postgresql.conf" <<EOF
 port = $DN_PORT
@@ -123,7 +123,7 @@ EOF
     wait_for_port "$GTM_HOST" "$GTM_PORT"
 
     log "Starting Datanode on port $DN_PORT..."
-    sudo -u opentenbase /usr/lib/opentenbase/bin/postgres -D "$DATA_DIR" &
+    sudo -u opentenbase /usr/lib/opentenbase/bin/postgres --datanode -D "$DATA_DIR" &
     DN_PID=$!
 
     # Wait for datanode to accept connections

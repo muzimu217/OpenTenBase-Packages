@@ -1,0 +1,63 @@
+FROM quay.io/centos/centos:stream9
+
+# CentOS Stream 9 分布式集群镜像
+
+# 安装 SSH server 和必要工具
+RUN dnf install -y openssh-server openssh-clients sudo sshpass iproute net-tools compat-openssl11 && \
+    dnf clean all
+
+# 配置 SSH
+RUN ssh-keygen -A && \
+    mkdir -p /var/run/sshd
+
+# 创建 opentenbase 用户
+RUN useradd -m -s /bin/bash opentenbase && \
+    echo 'opentenbase:opentenbase' | chpasswd
+
+# 配置 SSH 免密登录
+RUN mkdir -p /home/opentenbase/.ssh && \
+    ssh-keygen -t rsa -N '' -f /home/opentenbase/.ssh/id_rsa && \
+    cat /home/opentenbase/.ssh/id_rsa.pub >> /home/opentenbase/.ssh/authorized_keys && \
+    chmod 700 /home/opentenbase/.ssh && \
+    chmod 600 /home/opentenbase/.ssh/authorized_keys && \
+    chmod 600 /home/opentenbase/.ssh/id_rsa && \
+    echo 'Host *' > /home/opentenbase/.ssh/config && \
+    echo '    StrictHostKeyChecking no' >> /home/opentenbase/.ssh/config && \
+    echo '    UserKnownHostsFile /dev/null' >> /home/opentenbase/.ssh/config && \
+    echo '    LogLevel ERROR' >> /home/opentenbase/.ssh/config && \
+    chmod 600 /home/opentenbase/.ssh/config && \
+    chown -R opentenbase:opentenbase /home/opentenbase/.ssh
+
+# 配置 sshd 允许密码登录
+RUN sed -i 's/#PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config && \
+    sed -i 's/#PasswordAuthentication.*/PasswordAuthentication yes/' /etc/ssh/sshd_config && \
+    sed -i 's/#UsePAM.*/UsePAM yes/' /etc/ssh/sshd_config
+
+# 创建数据目录
+RUN mkdir -p /data/opentenbase/data && \
+    chmod 755 /data && \
+    chown -R opentenbase:opentenbase /data/opentenbase
+
+# 从 opentenbase-euleros 复制 OpenTenBase 二进制
+COPY --from=opentenbase-euleros:latest /usr/lib/opentenbase /usr/lib/opentenbase
+
+# 创建符号链接
+RUN ln -sf /usr/lib/opentenbase/bin/* /usr/local/bin/ 2>/dev/null || true
+
+# 复制 opentenbase_ctl
+COPY opentenbase_ctl /data/opentenbase/opentenbase_ctl
+RUN chmod 755 /data/opentenbase/opentenbase_ctl
+
+# 复制软件包
+COPY opentenbase-5.0-aarch64.tar.gz /data/opentenbase/
+
+# 复制配置文件
+COPY config.ini /data/opentenbase/config.ini
+COPY postgres.conf /data/opentenbase/postgres.conf
+
+# 设置目录权限
+RUN chmod -R 755 /data/opentenbase && \
+    chown -R opentenbase:opentenbase /data/opentenbase
+
+EXPOSE 22
+CMD ["/usr/sbin/sshd", "-D"]

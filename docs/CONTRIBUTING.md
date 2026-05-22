@@ -1,6 +1,6 @@
 # Contributing to OpenTenBase .deb Packaging
 
-[English](CONTRIBUTING.md) | [中文](CONTRIBUTING_zh.md)
+English | [中文](CONTRIBUTING_zh.md)
 
 Thank you for your interest in contributing to OpenTenBase .deb packaging!
 

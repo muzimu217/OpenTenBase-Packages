@@ -13,6 +13,8 @@ RUN apt-get update && apt-get install -y \
     libzstd1 \
     libssh2-1 \
     libuuid1 \
+    libatomic1 \
+    adduser \
     sudo \
     curl \
     iputils-ping \
@@ -21,7 +23,7 @@ RUN apt-get update && apt-get install -y \
 
 # Install OpenTenBase packages
 COPY *.deb /tmp/debs/
-RUN dpkg -i /tmp/debs/*.deb 2>/dev/null || apt-get install -f -y \
+RUN dpkg -i --force-depends /tmp/debs/*.deb \
     && rm -rf /tmp/debs
 
 # Create opentenbase user

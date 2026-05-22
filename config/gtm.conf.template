@@ -4,3 +4,5 @@ listen_addresses = '*'
 port = 6666
 startup = ACT
 log_file = 'gtm.log'
+# 线程数（不能超过 CPU 核心数，否则会报错：binding threads failed）
+gtm_thread_count = 2
