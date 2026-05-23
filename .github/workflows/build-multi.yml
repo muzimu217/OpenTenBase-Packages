@@ -186,12 +186,12 @@ jobs:
           ENV DEBIAN_FRONTEND=noninteractive
 
           RUN apt-get update && apt-get install -y \
-              sudo procps libatomic1 \
+              sudo procps libatomic1 adduser \
               libxml2 libssl1.1 libreadline8 \
               libpam0g liblz4-1 libzstd1 libcurl4 \
               libldap-2.4-2 libsasl2-2 \
               2>/dev/null || apt-get install -y \
-              sudo procps libatomic1 \
+              sudo procps libatomic1 adduser \
               libxml2 libssl3 libreadline8 \
               libpam0g liblz4-1 libzstd1 libcurl4 \
               libldap-2.5-0 libsasl2-2 \
@@ -201,6 +201,9 @@ jobs:
           RUN dpkg --force-depends -i /tmp/debs/*.deb
           RUN mkdir -p /usr/lib/opentenbase/lib/postgresql
           RUN ldconfig || true
+          # Ensure opentenbase user exists
+          RUN id opentenbase 2>/dev/null || (addgroup --system opentenbase && adduser --system --ingroup opentenbase --home /var/lib/opentenbase --shell /bin/bash opentenbase)
+          RUN chown -R opentenbase:opentenbase /var/lib/opentenbase /var/log/opentenbase 2>/dev/null || true
 
           COPY test/smoke-test.sh /test/
           RUN chmod +x /test/smoke-test.sh
