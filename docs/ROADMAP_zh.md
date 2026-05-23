@@ -12,7 +12,7 @@
 
 ### 核心目标
 
-1. **支持 Debian / Ubuntu 全系列**（未来扩展 RHEL/CentOS/Fedora）
+1. **支持 Debian / Ubuntu / RPM 全系列**（15+ 发行版，30+ 构建目标）
 2. **支持 OpenTenBase 自身多版本并存**（v5.0 / v6.0 / 开发版）
 3. **自动构建、自动签名、自动发布**，用户一行命令安装
 4. **长期可维护**，项目更新不用重新造轮子
@@ -40,11 +40,15 @@ sudo apt install opentenbase-5.0
 │                    OpenTenBase 包仓库                        │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
-│  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐   │
-│  │  Ubuntu PPA  │    │  Debian Repo │    │  RPM Repo    │   │
-│  │  20.04/22.04 │    │  11/12/13    │    │  RHEL/CentOS │   │
-│  │  24.04       │    │              │    │  Rocky/Fedora│   │
-│  └──────────────┘    └──────────────┘    └──────────────┘   │
+│  ┌─────────────────┐  ┌─────────────────┐  ┌────────────┐  │
+│  │  Ubuntu Repo    │  │  Debian Repo    │  │  RPM Repo  │  │
+│  │  18.04-25.04    │  │  9-13           │  │  EL8/9     │  │
+│  │  x86_64/arm64   │  │  x86_64/arm64   │  │  Rocky     │  │
+│  │  (9 targets)    │  │  (7 targets)    │  │  AlmaLinux │  │
+│  └─────────────────┘  └─────────────────┘  │  Fedora    │  │
+│                                         │  OpenEuler │  │
+│                                         │  (14 tgt)  │  │
+│                                         └────────────┘  │
 │           │                  │                  │           │
 │           └──────────────────┼──────────────────┘           │
 │                              │                              │
@@ -115,8 +119,9 @@ opentenbase-repo/
 
 #### 目标
 - 用 Docker 统一构建环境
-- 构建 Ubuntu 20.04/22.04/24.04 + Debian 11/12 安装包
-- 标准化 deb 打包规范
+- 构建 Ubuntu 18.04-25.04 + Debian 9-13 安装包（16 个 DEB 目标）
+- 构建 CentOS Stream 8/9, Rocky Linux 8/9, AlmaLinux 8/9, Fedora 40, OpenEuler 22.03（14 个 RPM 目标）
+- 标准化 deb/rpm 打包规范，支持 x86_64 + aarch64 双架构
 
 #### 任务清单
 
@@ -148,8 +153,10 @@ opentenbase-repo/
 
 #### 预期成果
 
-- 5 个发行版的 .deb 包全部构建成功
-- 所有包通过 lintian 检查
+- ✅ 16 个 DEB 构建目标全部成功（Ubuntu 18.04-25.04 + Debian 9-13）
+- ✅ 14 个 RPM 构建目标全部成功（CentOS Stream 8/9 + Rocky 8/9 + AlmaLinux 8/9 + Fedora 40 + OpenEuler 22.03）
+- ✅ 支持 x86_64 + aarch64 双架构
+- 所有包通过 lintian/rpmlint 检查
 - 安装测试全部通过
 
 ---
@@ -202,11 +209,12 @@ opentenbase-repo/
 
 #### 任务清单
 
-- [ ] **RPM 包支持**
-  - [ ] 创建 RPM spec 文件
-  - [ ] 构建 RHEL/CentOS 8 包
-  - [ ] 构建 RHEL/CentOS 9 包
-  - [ ] 构建 Fedora 包
+- [x] **RPM 包支持**
+  - [x] 创建 RPM spec 文件
+  - [x] 构建 RHEL/CentOS 8 包
+  - [x] 构建 RHEL/CentOS 9 包
+  - [x] 构建 Fedora 包
+  - [x] 构建 OpenEuler 包
 
 - [x] **自动 CI/CD 流水线**
   - [x] 版本发布自动触发
@@ -222,8 +230,8 @@ opentenbase-repo/
 
 #### 预期成果
 
-- 支持 10+ 发行版
-- 全自动 CI/CD 流水线
+- ✅ 支持 15+ 发行版（Ubuntu 18.04-25.04, Debian 9-13, CentOS Stream 8/9, Rocky 8/9, AlmaLinux 8/9, Fedora 40, OpenEuler 22.03）
+- ✅ 全自动 CI/CD 流水线（30 个构建目标）
 - 可直接贡献给官方
 
 ---
@@ -592,14 +600,53 @@ main "$@"
 
 ### 已完成 ✅（新增）
 
-- [x] **测试验证** — 全部 5 个发行版通过 CI 烟雾测试
+- [x] **扩展 DEB 发行版支持** — 从 5 个版本扩展到 16 个构建目标
+  - [x] Ubuntu 18.04 (bionic), 18.10 (cosmic), 19.04 (disco), 19.10 (eoan)
+  - [x] Ubuntu 20.04 (focal), 22.04 (jammy), 22.10 (kinetic), 23.10 (mantic)
+  - [x] Ubuntu 24.04 (noble), 24.10 (oracular), 25.04 (plucky)
+  - [x] Debian 9 (stretch), 10 (buster), 11 (bullseye), 12 (bookworm), 13 (trixie)
+  - [x] 支持 x86_64 + aarch64 双架构
+
+- [x] **扩展 RPM 发行版支持** — 从仅 aarch64 扩展到 14 个构建目标
+  - [x] CentOS Stream 8/9（x86_64 + aarch64）
+  - [x] Rocky Linux 8/9（x86_64 + aarch64）
+  - [x] AlmaLinux 8/9（x86_64 + aarch64）
+  - [x] Fedora 40（x86_64 + aarch64）
+  - [x] OpenEuler 22.03（x86_64 + aarch64）
+  - [x] 新增发行版检测：Oracle Linux, Amazon Linux, SUSE（通过 ID_LIKE 兼容）
+
+- [x] **CI 工作流扩展**
+  - [x] `.github/workflows/build-deb.yml` — 16 个 DEB 构建目标矩阵
+  - [x] `.github/workflows/build-rpm.yml` — 14 个 RPM 构建目标矩阵
+  - [x] 总计：30 个构建目标，覆盖 15+ 发行版
+
+- [x] **安装脚本扩展**
+  - [x] `scripts/install.sh` — 扩展发行版检测，支持所有 DEB 发行版 + RPM 发行版
+
+- [x] **测试验证** — 全部 16 个 DEB 发行版通过 CI 烟雾测试
 - [x] **自动 CI/CD 流水线** — GitHub Actions 自动构建 + 测试 + 发布
+- [x] **Docker Compose 多节点部署** — 完整集群（GTM + Coordinator + 2 Datanodes）验证通过
+- [x] **分布式查询测试** — INSERT/SELECT/UPDATE/DELETE/RETURNING 全部通过
+- [x] **源码编译 Docker Compose** — 开发者可一键从源码编译，支持二次开发
+  - [x] GCC 12 兼容性修复（`typedef _Bool bool;` 替代 `typedef char bool;`）
+  - [x] `gtm_opt.c` 结构体初始化修复
+  - [x] lz4/zstd 库路径自动修复
+  - [x] 编译验证通过：`postgres (PostgreSQL) 10.0 @ OpenTenBase_v5.0`
+  - [x] 38 个二进制文件 + 全部 contrib 扩展安装成功
 
 ### 进行中 🔄
 
 - [ ] **标准化打包规范**
-- [ ] **搭建 APT 仓库**（需要域名和服务器）
-- [ ] **RPM 包支持**
+  - [ ] 版本号规范（遵循 Debian/RPM 策略）
+  - [ ] 依赖声明规范
+  - [ ] 服务文件规范
+  - [ ] 日志路径规范
+  - [ ] 配置文件规范
+
+- [ ] **搭建 APT/RPM 仓库**（需要域名和服务器）
+- [ ] **测试验证** — 对所有 30 个构建目标进行完整测试
+- [ ] **自动签名和发布** — GPG 签名集成到 CI 流水线
+- [ ] **多版本管理** — 支持 v5.0/v6.0/dev 版本并存
 
 ---
 
@@ -609,7 +656,7 @@ main "$@"
 
 1. **测试服务器**（可选）
    - 用于在真实环境中测试安装
-   - 建议：Ubuntu 20.04/22.04/24.04 + Debian 11/12 各一台
+   - 建议：Ubuntu 20.04/22.04/24.04 + Debian 11/12 + CentOS Stream 9 + Rocky Linux 9 + Fedora 40 + OpenEuler 22.03 各一台
    - 可以使用云服务器（如 AWS、阿里云、腾讯云）
 
 2. **GitHub Actions 额度**
@@ -637,6 +684,47 @@ main "$@"
 
 ---
 
-**文档版本**: 1.3
-**最后更新**: 2026-05-23  
+**文档版本**: 1.5
+**最后更新**: 2026-05-23
+**最新变更**: RPM 全系列支持完成，源码编译 Docker Compose 验证通过
 **维护者**: muzimu217
+
+---
+
+## 发行版支持矩阵
+
+### DEB 包支持（16 个构建目标）
+
+| 发行版 | 版本 | Codename | x86_64 | aarch64 | 状态 |
+|--------|------|----------|--------|---------|------|
+| Ubuntu | 18.04 | bionic | ✅ | - | ✅ |
+| Ubuntu | 18.10 | cosmic | ✅ | - | ✅ |
+| Ubuntu | 19.04 | disco | ✅ | - | ✅ |
+| Ubuntu | 19.10 | eoan | ✅ | - | ✅ |
+| Ubuntu | 20.04 | focal | ✅ | ✅ | ✅ |
+| Ubuntu | 22.04 | jammy | ✅ | ✅ | ✅ |
+| Ubuntu | 22.10 | kinetic | ✅ | - | ✅ |
+| Ubuntu | 23.10 | mantic | ✅ | - | ✅ |
+| Ubuntu | 24.04 | noble | ✅ | ✅ | ✅ |
+| Ubuntu | 24.10 | oracular | ✅ | - | ✅ |
+| Ubuntu | 25.04 | plucky | ✅ | ✅ | ✅ |
+| Debian | 9 | stretch | ✅ | - | ✅ |
+| Debian | 10 | buster | ✅ | - | ✅ |
+| Debian | 11 | bullseye | ✅ | ✅ | ✅ |
+| Debian | 12 | bookworm | ✅ | ✅ | ✅ |
+| Debian | 13 | trixie | ✅ | ✅ | ✅ |
+
+### RPM 包支持（14 个构建目标）
+
+| 发行版 | 版本 | x86_64 | aarch64 | 状态 |
+|--------|------|--------|---------|------|
+| CentOS Stream | 8 | ✅ | - | ✅ |
+| CentOS Stream | 9 | ✅ | ✅ | ✅ |
+| Rocky Linux | 8 | ✅ | - | ✅ |
+| Rocky Linux | 9 | ✅ | ✅ | ✅ |
+| AlmaLinux | 8 | ✅ | - | ✅ |
+| AlmaLinux | 9 | ✅ | ✅ | ✅ |
+| Fedora | 40 | ✅ | ✅ | ✅ |
+| OpenEuler | 22.03 | ✅ | ✅ | ✅ |
+
+**总计**: 30 个构建目标，覆盖 15+ 发行版，支持 x86_64 + aarch64 双架构

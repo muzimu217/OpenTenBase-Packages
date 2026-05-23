@@ -1,12 +1,37 @@
+version: "2.4"
+
 services:
+  # ============================================
+  # Builder: compiles OpenTenBase from source
+  # ============================================
+  builder:
+    build:
+      context: .
+      dockerfile: Dockerfile.builddev
+    image: opentenbase-builddev:latest
+    container_name: opentenbase-builder
+    volumes:
+      - ${OTB_SRC_DIR:-../../source/OpenTenBase}:/src/OpenTenBase
+      - otb_install:/usr/lib/opentenbase
+      - otb_ccache:/ccache
+      - ./scripts:/scripts:ro
+    environment:
+      - OTB_PREFIX=/usr/lib/opentenbase
+      - SRC_DIR=/src/OpenTenBase
+      - CCACHE_DIR=/ccache
+    command: ["/scripts/build.sh"]
+    networks:
+      - opentenbase
+
   # ============================================
   # GTM (Global Transaction Manager)
   # ============================================
   gtm:
     build:
-      context: ../runtime
-      dockerfile: Dockerfile.runtime
-    image: opentenbase-runtime:latest
+      context: .
+      dockerfile: Dockerfile.runtime-dev
+    image: opentenbase-runtime-dev:latest
+
     container_name: opentenbase-gtm
     hostname: gtm
     environment:
@@ -16,6 +41,7 @@ services:
     ports:
       - "6666:6666"
     volumes:
+      - otb_install:/usr/lib/opentenbase:ro
       - gtm_data:/var/lib/opentenbase/data/gtm
     networks:
       - opentenbase
@@ -31,9 +57,10 @@ services:
   # ============================================
   coordinator:
     build:
-      context: ../runtime
-      dockerfile: Dockerfile.runtime
-    image: opentenbase-runtime:latest
+      context: .
+      dockerfile: Dockerfile.runtime-dev
+    image: opentenbase-runtime-dev:latest
+
     container_name: opentenbase-coordinator
     hostname: coordinator
     depends_on:
@@ -49,6 +76,7 @@ services:
     ports:
       - "5432:5432"
     volumes:
+      - otb_install:/usr/lib/opentenbase:ro
       - coord_data:/var/lib/opentenbase/data/coordinator
     networks:
       - opentenbase
@@ -64,9 +92,10 @@ services:
   # ============================================
   datanode1:
     build:
-      context: ../runtime
-      dockerfile: Dockerfile.runtime
-    image: opentenbase-runtime:latest
+      context: .
+      dockerfile: Dockerfile.runtime-dev
+    image: opentenbase-runtime-dev:latest
+
     container_name: opentenbase-datanode1
     hostname: datanode1
     depends_on:
@@ -80,10 +109,10 @@ services:
       - COORD_HOST=coordinator
       - COORD_PORT=5432
       - DN_PORT=15432
-      - DN_FORWARD_PORT=6670
     ports:
       - "15432:15432"
     volumes:
+      - otb_install:/usr/lib/opentenbase:ro
       - dn1_data:/var/lib/opentenbase/data/datanode1
     networks:
       - opentenbase
@@ -99,9 +128,10 @@ services:
   # ============================================
   datanode2:
     build:
-      context: ../runtime
-      dockerfile: Dockerfile.runtime
-    image: opentenbase-runtime:latest
+      context: .
+      dockerfile: Dockerfile.runtime-dev
+    image: opentenbase-runtime-dev:latest
+
     container_name: opentenbase-datanode2
     hostname: datanode2
     depends_on:
@@ -115,10 +145,10 @@ services:
       - COORD_HOST=coordinator
       - COORD_PORT=5432
       - DN_PORT=15433
-      - DN_FORWARD_PORT=6670
     ports:
       - "15433:15433"
     volumes:
+      - otb_install:/usr/lib/opentenbase:ro
       - dn2_data:/var/lib/opentenbase/data/datanode2
     networks:
       - opentenbase
@@ -130,6 +160,8 @@ services:
       start_period: 10s
 
 volumes:
+  otb_install:
+  otb_ccache:
   gtm_data:
   coord_data:
   dn1_data:

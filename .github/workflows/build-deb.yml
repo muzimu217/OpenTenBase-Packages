@@ -1,0 +1,174 @@
+name: Build DEB Packages
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+jobs:
+  build-deb:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Ubuntu 18.04 LTS (Bionic)
+          - name: ubuntu-18.04-amd64
+            os: ubuntu-latest
+            arch: amd64
+            container: ubuntu:18.04
+            codename: bionic
+          # Ubuntu 20.04 LTS (Focal)
+          - name: ubuntu-20.04-amd64
+            os: ubuntu-latest
+            arch: amd64
+            container: ubuntu:20.04
+            codename: focal
+          - name: ubuntu-20.04-arm64
+            os: ubuntu-latest
+            arch: arm64
+            container: ubuntu:20.04
+            codename: focal
+            qemu: true
+          # Ubuntu 22.04 LTS (Jammy)
+          - name: ubuntu-22.04-amd64
+            os: ubuntu-latest
+            arch: amd64
+            container: ubuntu:22.04
+            codename: jammy
+          - name: ubuntu-22.04-arm64
+            os: ubuntu-latest
+            arch: arm64
+            container: ubuntu:22.04
+            codename: jammy
+            qemu: true
+          # Ubuntu 24.04 LTS (Noble)
+          - name: ubuntu-24.04-amd64
+            os: ubuntu-latest
+            arch: amd64
+            container: ubuntu:24.04
+            codename: noble
+          - name: ubuntu-24.04-arm64
+            os: ubuntu-latest
+            arch: arm64
+            container: ubuntu:24.04
+            codename: noble
+            qemu: true
+          # Ubuntu 25.04 (Plucky)
+          - name: ubuntu-25.04-amd64
+            os: ubuntu-latest
+            arch: amd64
+            container: ubuntu:25.04
+            codename: plucky
+          - name: ubuntu-25.04-arm64
+            os: ubuntu-latest
+            arch: arm64
+            container: ubuntu:25.04
+            codename: plucky
+            qemu: true
+          # Debian 10 (Buster)
+          - name: debian-10-amd64
+            os: ubuntu-latest
+            arch: amd64
+            container: debian:buster
+            codename: buster
+          # Debian 11 (Bullseye)
+          - name: debian-11-amd64
+            os: ubuntu-latest
+            arch: amd64
+            container: debian:bullseye
+            codename: bullseye
+          - name: debian-11-arm64
+            os: ubuntu-latest
+            arch: arm64
+            container: debian:bullseye
+            codename: bullseye
+            qemu: true
+          # Debian 12 (Bookworm)
+          - name: debian-12-amd64
+            os: ubuntu-latest
+            arch: amd64
+            container: debian:bookworm
+            codename: bookworm
+          - name: debian-12-arm64
+            os: ubuntu-latest
+            arch: arm64
+            container: debian:bookworm
+            codename: bookworm
+            qemu: true
+          # Debian 13 (Trixie)
+          - name: debian-13-amd64
+            os: ubuntu-latest
+            arch: amd64
+            container: debian:trixie
+            codename: trixie
+          - name: debian-13-arm64
+            os: ubuntu-latest
+            arch: arm64
+            container: debian:trixie
+            codename: trixie
+            qemu: true
+
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    container:
+      image: ${{ matrix.container }}
+
+    steps:
+      - name: Install QEMU for cross-arch builds
+        if: matrix.qemu
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: linux/${{ matrix.arch }}
+
+      - name: Install build dependencies
+        run: |
+          export DEBIAN_FRONTEND=noninteractive
+          apt-get update
+          apt-get install -y \
+            build-essential debhelper fakeroot quilt \
+            bison flex perl \
+            libreadline-dev zlib1g-dev libssl-dev libpam0g-dev \
+            libxml2-dev libldap2-dev uuid-dev \
+            libcurl4-openssl-dev liblz4-dev libzstd-dev \
+            pkg-config libtool git ca-certificates
+
+          # Install optional deps (may not exist on older distros)
+          apt-get install -y libossp-uuid-dev 2>/dev/null || true
+          apt-get install -y libcli11-dev 2>/dev/null || true
+          apt-get install -y libpqxx-dev 2>/dev/null || true
+
+      - name: Checkout packaging repo
+        uses: actions/checkout@v4
+        with:
+          path: opentenbase-pkg
+
+      - name: Clone OpenTenBase upstream source
+        run: |
+          git clone --depth=1 \
+            https://github.com/OpenTenBase/OpenTenBase.git \
+            /tmp/source/OpenTenBase
+
+      - name: Build DEB packages
+        run: |
+          cd /tmp/source/OpenTenBase
+          cp -r /opentenbase-pkg/debian/ ./debian/
+          fakeroot debian/rules binary 2>&1 | tail -50
+
+      - name: Run lintian
+        if: always()
+        run: |
+          apt-get install -y lintian 2>/dev/null || true
+          lintian ../*.deb 2>&1 || true
+
+      - name: Upload DEB packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: debs-${{ matrix.name }}
+          path: ../*.deb
+          retention-days: 30
+
+      - name: Cleanup
+        if: always()
+        run: |
+          rm -rf /tmp/source
+          apt-get clean

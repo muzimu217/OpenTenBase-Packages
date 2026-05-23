@@ -1,36 +1,28 @@
-FROM ubuntu:24.04
+FROM rockylinux:8
 
-ENV DEBIAN_FRONTEND=noninteractive
-
-# Install runtime dependencies
-RUN apt-get update && apt-get install -y \
-    libreadline8 \
-    libssl3 \
-    libxml2 \
-    libcurl4 \
-    libpam0g \
-    liblz4-1 \
-    libzstd1 \
-    libssh2-1 \
-    libuuid1 \
-    libatomic1 \
-    adduser \
+# Install only missing runtime dependencies
+# Rocky 8 base already includes: openssl-libs (1.1), libxml2, libcurl, pam, lz4-libs, libzstd, libuuid, curl
+RUN dnf install -y \
+    libssh \
+    libatomic \
     sudo \
-    curl \
-    iputils-ping \
+    iputils \
     net-tools \
-    && rm -rf /var/lib/apt/lists/*
+    && dnf clean all
 
-# Install OpenTenBase packages
-COPY *.deb /tmp/debs/
-RUN dpkg -i --force-depends /tmp/debs/*.deb \
-    && rm -rf /tmp/debs
+# Install OpenTenBase from extracted files
+COPY extracted/ /
+RUN ldconfig
 
-# Create opentenbase user
-RUN useradd -m -s /bin/bash opentenbase || true
+# Create opentenbase user and set up directories
+RUN useradd -m -s /bin/bash opentenbase \
+    && mkdir -p /var/lib/opentenbase/data \
+    && chown -R opentenbase:opentenbase /var/lib/opentenbase
 
 # Entrypoint
 COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+RUN chmod 755 /entrypoint.sh
 
+USER opentenbase
+WORKDIR /home/opentenbase
 ENTRYPOINT ["/entrypoint.sh"]

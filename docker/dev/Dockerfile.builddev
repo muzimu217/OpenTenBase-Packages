@@ -1,0 +1,55 @@
+FROM ubuntu:24.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install build dependencies
+# Note: GCC 13+ has strict bool/_Bool type checking that breaks OpenTenBase.
+# We install gcc-12 as the default compiler for compatibility.
+RUN apt-get update && apt-get install -y \
+    gcc-12 \
+    g++-12 \
+    make \
+    bison \
+    flex \
+    perl \
+    libreadline-dev \
+    zlib1g-dev \
+    libssl-dev \
+    libpam0g-dev \
+    libxml2-dev \
+    libldap2-dev \
+    libossp-uuid-dev \
+    uuid-dev \
+    libcurl4-openssl-dev \
+    liblz4-dev \
+    libzstd-dev \
+    libssh2-1-dev \
+    libcli11-dev \
+    libpqxx-dev \
+    quilt \
+    libtool \
+    pkg-config \
+    ccache \
+    git \
+    sudo \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set gcc-12 as the default compiler
+RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-12 100 \
+    && update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-12 100 \
+    && update-alternatives --install /usr/bin/cc cc /usr/bin/gcc-12 100 \
+    && update-alternatives --install /usr/bin/c++ c++ /usr/bin/g++-12 100
+
+# Create opentenbase user (uid 1001)
+RUN useradd -m -u 1001 -s /bin/bash opentenbase
+
+# Install runas helper
+COPY scripts/runas /usr/local/bin/runas
+RUN chmod +x /usr/local/bin/runas
+
+# Environment
+ENV OTB_PREFIX=/usr/lib/opentenbase
+ENV CCACHE_DIR=/ccache
+
+# Default working directory for source
+WORKDIR /src/OpenTenBase

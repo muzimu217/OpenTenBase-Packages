@@ -1,0 +1,240 @@
+version: '3.8'
+
+# OpenTenBase 源码编译集群
+# 用于二次开发和本地编译
+
+services:
+  # 基础构建镜像（用于编译 OpenTenBase）
+  builder:
+    build:
+      context: ../..
+      dockerfile: docker/cluster/Dockerfile.source
+    image: opentenbase-source:latest
+    container_name: opentenbase-builder
+    volumes:
+      # 挂载 OpenTenBase 源码（开发者可以在宿主机修改源码）
+      - ${OPENTENBASE_SOURCE:-./opentenbase-source}:/data/opentenbase/source
+      # 挂载编译输出
+      - opentenbase-build:/data/opentenbase/build
+      - opentenbase-install:/data/opentenbase/install
+      # 挂载配置文件
+      - ./config.ini:/data/opentenbase/config.ini
+      - ./postgres.conf:/data/opentenbase/postgres.conf
+    command: /bin/bash -c "while true; do sleep 30; done"
+    networks:
+      - opentenbase-net
+    ports:
+      - "2222:22"  # SSH 访问
+
+  # GTM (Global Transaction Manager)
+  gtm:
+    image: opentenbase-source:latest
+    container_name: opentenbase-gtm-source
+    hostname: gtm
+    volumes:
+      - opentenbase-build:/data/opentenbase/build
+      - opentenbase-install:/data/opentenbase/install
+      - gtm-data:/data/opentenbase/data
+      - ./config.ini:/data/opentenbase/config.ini
+      - ./scripts/setup-gtm.sh:/data/opentenbase/setup.sh
+    networks:
+      opentenbase-net:
+        ipv4_address: 172.20.0.2
+    ports:
+      - "11000:11000"  # SSH 访问
+      - "6666:6666"    # GTM 端口
+    command: >
+      /bin/bash -c "
+        # 等待编译完成
+        if [ ! -f /data/opentenbase/install/bin/gtm ]; then
+          echo '等待编译完成...'
+          while [ ! -f /data/opentenbase/install/bin/gtm ]; do sleep 10; done
+        fi
+        
+        # 创建符号链接
+        ln -sf /data/opentenbase/install/bin/* /usr/local/bin/ 2>/dev/null || true
+        
+        # 初始化 GTM
+        if [ ! -d /data/opentenbase/data/gtm ]; then
+          /data/opentenbase/install/bin/gtm_ctl init -D /data/opentenbase/data/gtm -Z gtm
+          # 修复 GTM 线程数配置
+          CPU_CORES=\\$(nproc 2>/dev/null || echo \"2\")
+          GTM_THREADS=\\$((CPU_CORES < 4 ? CPU_CORES : 4))
+          echo \"gtm_thread_count = \\$GTM_THREADS\" >> /data/opentenbase/data/gtm/gtm.conf
+        fi
+        
+        # 启动 GTM
+        /data/opentenbase/install/bin/gtm_ctl start -Z gtm -D /data/opentenbase/data/gtm -l /data/opentenbase/data/gtm.log
+        
+        # 保持运行
+        /usr/sbin/sshd -D
+      "
+
+  # Coordinator (CN)
+  cn:
+    image: opentenbase-source:latest
+    container_name: opentenbase-cn-source
+    hostname: cn
+    volumes:
+      - opentenbase-build:/data/opentenbase/build
+      - opentenbase-install:/data/opentenbase/install
+      - cn-data:/data/opentenbase/data
+      - ./config.ini:/data/opentenbase/config.ini
+      - ./scripts/setup-cn.sh:/data/opentenbase/setup.sh
+    networks:
+      opentenbase-net:
+        ipv4_address: 172.20.0.3
+    ports:
+      - "11001:11000"  # SSH 访问
+      - "15432:15432"  # PostgreSQL 端口
+    depends_on:
+      - gtm
+    command: >
+      /bin/bash -c "
+        # 等待编译完成
+        if [ ! -f /data/opentenbase/install/bin/postgres ]; then
+          echo '等待编译完成...'
+          while [ ! -f /data/opentenbase/install/bin/postgres ]; do sleep 10; done
+        fi
+        
+        # 创建符号链接
+        ln -sf /data/opentenbase/install/bin/* /usr/local/bin/ 2>/dev/null || true
+        
+        # 等待 GTM 就绪
+        sleep 10
+        
+        # 初始化 Coordinator
+        if [ ! -d /data/opentenbase/data/coordinator ]; then
+          /data/opentenbase/install/bin/initdb \
+            -D /data/opentenbase/data/coordinator \
+            --nodename='coord' \
+            -E utf8 \
+            --master_gtm_nodename='gtm' \
+            --master_gtm_ip='172.20.0.2' \
+            --master_gtm_port='6666'
+        fi
+        
+        # 启动 Coordinator
+        /data/opentenbase/install/bin/pg_ctl start -D /data/opentenbase/data/coordinator -Z coordinator -l /data/opentenbase/data/coordinator.log
+        
+        # 保持运行
+        /usr/sbin/sshd -D
+      "
+
+  # Datanode 1 (DN1)
+  dn1:
+    image: opentenbase-source:latest
+    container_name: opentenbase-dn1-source
+    hostname: dn1
+    volumes:
+      - opentenbase-build:/data/opentenbase/build
+      - opentenbase-install:/data/opentenbase/install
+      - dn1-data:/data/opentenbase/data
+      - ./config.ini:/data/opentenbase/config.ini
+      - ./scripts/setup-dn.sh:/data/opentenbase/setup.sh
+    networks:
+      opentenbase-net:
+        ipv4_address: 172.20.0.4
+    ports:
+      - "11002:11000"  # SSH 访问
+      - "15433:15432"  # PostgreSQL 端口
+    depends_on:
+      - gtm
+    command: >
+      /bin/bash -c "
+        # 等待编译完成
+        if [ ! -f /data/opentenbase/install/bin/postgres ]; then
+          echo '等待编译完成...'
+          while [ ! -f /data/opentenbase/install/bin/postgres ]; do sleep 10; done
+        fi
+        
+        # 创建符号链接
+        ln -sf /data/opentenbase/install/bin/* /usr/local/bin/ 2>/dev/null || true
+        
+        # 等待 GTM 就绪
+        sleep 10
+        
+        # 初始化 Datanode
+        if [ ! -d /data/opentenbase/data/datanode1 ]; then
+          /data/opentenbase/install/bin/initdb \
+            -D /data/opentenbase/data/datanode1 \
+            --nodename='dn1' \
+            -E utf8 \
+            --master_gtm_nodename='gtm' \
+            --master_gtm_ip='172.20.0.2' \
+            --master_gtm_port='6666'
+        fi
+        
+        # 启动 Datanode
+        /data/opentenbase/install/bin/pg_ctl start -D /data/opentenbase/data/datanode1 -Z datanode -l /data/opentenbase/data/datanode1.log
+        
+        # 保持运行
+        /usr/sbin/sshd -D
+      "
+
+  # Datanode 2 (DN2)
+  dn2:
+    image: opentenbase-source:latest
+    container_name: opentenbase-dn2-source
+    hostname: dn2
+    volumes:
+      - opentenbase-build:/data/opentenbase/build
+      - opentenbase-install:/data/opentenbase/install
+      - dn2-data:/data/opentenbase/data
+      - ./config.ini:/data/opentenbase/config.ini
+      - ./scripts/setup-dn.sh:/data/opentenbase/setup.sh
+    networks:
+      opentenbase-net:
+        ipv4_address: 172.20.0.5
+    ports:
+      - "11003:11000"  # SSH 访问
+      - "15434:15432"  # PostgreSQL 端口
+    depends_on:
+      - gtm
+    command: >
+      /bin/bash -c "
+        # 等待编译完成
+        if [ ! -f /data/opentenbase/install/bin/postgres ]; then
+          echo '等待编译完成...'
+          while [ ! -f /data/opentenbase/install/bin/postgres ]; do sleep 10; done
+        fi
+        
+        # 创建符号链接
+        ln -sf /data/opentenbase/install/bin/* /usr/local/bin/ 2>/dev/null || true
+        
+        # 等待 GTM 就绪
+        sleep 10
+        
+        # 初始化 Datanode
+        if [ ! -d /data/opentenbase/data/datanode2 ]; then
+          /data/opentenbase/install/bin/initdb \
+            -D /data/opentenbase/data/datanode2 \
+            --nodename='dn2' \
+            -E utf8 \
+            --master_gtm_nodename='gtm' \
+            --master_gtm_ip='172.20.0.2' \
+            --master_gtm_port='6666'
+        fi
+        
+        # 启动 Datanode
+        /data/opentenbase/install/bin/pg_ctl start -D /data/opentenbase/data/datanode2 -Z datanode -l /data/opentenbase/data/datanode2.log
+        
+        # 保持运行
+        /usr/sbin/sshd -D
+      "
+
+networks:
+  opentenbase-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24
+          gateway: 172.20.0.1
+
+volumes:
+  opentenbase-build:
+  opentenbase-install:
+  gtm-data:
+  cn-data:
+  dn1-data:
+  dn2-data:

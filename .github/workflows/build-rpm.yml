@@ -1,0 +1,141 @@
+name: Build RPM Packages
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+jobs:
+  build-rpm:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # CentOS Stream 8
+          - name: centos-stream-8-x86_64
+            os: ubuntu-latest
+            arch: x86_64
+            container: quay.io/centos/centos:stream8
+          # CentOS Stream 9
+          - name: centos-stream-9-x86_64
+            os: ubuntu-latest
+            arch: x86_64
+            container: quay.io/centos/centos:stream9
+          - name: centos-stream-9-aarch64
+            os: ubuntu-latest
+            arch: aarch64
+            container: quay.io/centos/centos:stream9
+            qemu: true
+          # Rocky Linux 8
+          - name: rockylinux-8-x86_64
+            os: ubuntu-latest
+            arch: x86_64
+            container: rockylinux:8
+          # Rocky Linux 9
+          - name: rockylinux-9-x86_64
+            os: ubuntu-latest
+            arch: x86_64
+            container: rockylinux:9
+          - name: rockylinux-9-aarch64
+            os: ubuntu-latest
+            arch: aarch64
+            container: rockylinux:9
+            qemu: true
+          # AlmaLinux 8
+          - name: almalinux-8-x86_64
+            os: ubuntu-latest
+            arch: x86_64
+            container: almalinux:8
+          # AlmaLinux 9
+          - name: almalinux-9-x86_64
+            os: ubuntu-latest
+            arch: x86_64
+            container: almalinux:9
+          - name: almalinux-9-aarch64
+            os: ubuntu-latest
+            arch: aarch64
+            container: almalinux:9
+            qemu: true
+          # Fedora 40
+          - name: fedora-40-x86_64
+            os: ubuntu-latest
+            arch: x86_64
+            container: quay.io/fedora/fedora:40
+          - name: fedora-40-aarch64
+            os: ubuntu-latest
+            arch: aarch64
+            container: quay.io/fedora/fedora:40
+            qemu: true
+          # OpenEuler
+          - name: openeuler-22.03-x86_64
+            os: ubuntu-latest
+            arch: x86_64
+            container: openeuler/openeuler:22.03
+          - name: openeuler-22.03-aarch64
+            os: ubuntu-latest
+            arch: aarch64
+            container: openeuler/openeuler:22.03
+            qemu: true
+
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    container:
+      image: ${{ matrix.container }}
+
+    steps:
+      - name: Install QEMU for cross-arch builds
+        if: matrix.qemu
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: linux/${{ matrix.arch }}
+
+      - name: Install build dependencies
+        run: |
+          dnf install -y \
+            gcc gcc-c++ make bison flex perl \
+            readline-devel zlib-devel openssl-devel pam-devel \
+            libxml2-devel openldap-devel libuuid-devel \
+            libcurl-devel lz4-devel zstd-devel libssh2-devel \
+            pkg-config libtool rpm-build rpmlint git
+
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          path: opentenbase-pkg
+
+      - name: Clone OpenTenBase upstream source
+        run: |
+          git clone --depth=1 \
+            https://github.com/OpenTenBase/OpenTenBase.git \
+            /tmp/source/OpenTenBase
+
+      - name: Build RPM packages
+        run: |
+          cd opentenbase-pkg/rpm
+          bash build-rpm.sh --source-dir /tmp/source/OpenTenBase
+
+      - name: Run rpmlint
+        if: always()
+        run: |
+          cd opentenbase-pkg/rpm
+          rpmlint RPMS/*/*.rpm SRPMS/*.rpm 2>&1 || true
+
+      - name: Upload RPM packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: rpms-${{ matrix.name }}
+          path: opentenbase-pkg/rpm/RPMS/**/*.rpm
+          retention-days: 30
+
+      - name: Upload source RPM
+        uses: actions/upload-artifact@v4
+        with:
+          name: srpm-${{ matrix.name }}
+          path: opentenbase-pkg/rpm/SRPMS/*.rpm
+          retention-days: 30
+
+      - name: Cleanup
+        if: always()
+        run: |
+          rm -rf /tmp/source
+          dnf clean all

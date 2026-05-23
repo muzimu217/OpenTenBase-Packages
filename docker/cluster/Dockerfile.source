@@ -1,0 +1,90 @@
+# OpenTenBase 源码编译镜像
+# 用于二次开发和本地编译
+
+FROM quay.io/centos/centos:stream9
+
+# 非交互模式
+ENV DEBIAN_FRONTEND=noninteractive
+
+# 安装编译依赖
+RUN dnf install -y \
+    # 基础工具
+    gcc gcc-c++ make cmake git \
+    # Bison/Flex (SQL 解析器)
+    bison flex \
+    # Perl (脚本语言)
+    perl perl-DBI perl-DBD-Pg \
+    # OpenSSL (SSL/TLS 支持)
+    openssl-devel \
+    # readline (命令行编辑)
+    readline-devel \
+    # zlib (压缩)
+    zlib-devel \
+    # libxml2 (XML 支持)
+    libxml2-devel \
+    # OpenLDAP (LDAP 认证)
+    openldap-devel \
+    # UUID (UUID 生成)
+    libuuid-devel \
+    # libcurl (HTTP 支持)
+    libcurl-devel \
+    # lz4/zstd (压缩)
+    lz4-devel libzstd-devel \
+    # libssh2 (SSH 支持)
+    libssh2-devel \
+    # pkg-config
+    pkg-config \
+    # libtool
+    libtool \
+    # Python (编译脚本)
+    python3 python3-pip \
+    # 其他工具
+    patch tar gzip wget vim openssh-server openssh-clients sudo iproute net-tools \
+    && dnf clean all
+
+# 配置 SSH
+RUN ssh-keygen -A && \
+    mkdir -p /var/run/sshd
+
+# 创建 opentenbase 用户
+RUN useradd -m -s /bin/bash opentenbase && \
+    echo 'opentenbase:opentenbase' | chpasswd
+
+# 配置 SSH 免密登录
+RUN mkdir -p /home/opentenbase/.ssh && \
+    ssh-keygen -t rsa -N '' -f /home/opentenbase/.ssh/id_rsa && \
+    cat /home/opentenbase/.ssh/id_rsa.pub >> /home/opentenbase/.ssh/authorized_keys && \
+    chmod 700 /home/opentenbase/.ssh && \
+    chmod 600 /home/opentenbase/.ssh/authorized_keys && \
+    chmod 600 /home/opentenbase/.ssh/id_rsa && \
+    echo 'Host *' > /home/opentenbase/.ssh/config && \
+    echo '    StrictHostKeyChecking no' >> /home/opentenbase/.ssh/config && \
+    echo '    UserKnownHostsFile /dev/null' >> /home/opentenbase/.ssh/config && \
+    echo '    LogLevel ERROR' >> /home/opentenbase/.ssh/config && \
+    chmod 600 /home/opentenbase/.ssh/config && \
+    chown -R opentenbase:opentenbase /home/opentenbase/.ssh
+
+# 配置 sshd 允许密码登录
+RUN sed -i 's/#PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config && \
+    sed -i 's/#PasswordAuthentication.*/PasswordAuthentication yes/' /etc/ssh/sshd_config && \
+    sed -i 's/#UsePAM.*/UsePAM yes/' /etc/ssh/sshd_config
+
+# 创建工作目录
+RUN mkdir -p /data/opentenbase/{source,build,data,config} && \
+    chown -R opentenbase:opentenbase /data/opentenbase
+
+# 复制编译脚本
+COPY docker/cluster/scripts/build-source.sh /data/opentenbase/build-source.sh
+RUN chmod 755 /data/opentenbase/build-source.sh
+
+# 复制配置文件模板
+COPY docker/cluster/config.ini /data/opentenbase/config.ini.template
+COPY docker/cluster/postgres.conf /data/opentenbase/postgres.conf.template
+
+# 设置工作目录
+WORKDIR /data/opentenbase
+
+EXPOSE 22 5432 6666 6667 11000
+
+# 默认启动 SSH
+CMD ["/usr/sbin/sshd", "-D"]

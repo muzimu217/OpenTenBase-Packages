@@ -13,14 +13,16 @@
 
 ### 为什么单机多节点不支持？
 
-OpenTenBase 的 CN 和 DN 都有一个 **forward manager**（连接池转发器），默认绑定到 `127.0.0.1:6669`。在单机部署时，CN 和 DN 共享同一个 IP，导致端口冲突：
+OpenTenBase 的 CN 和 DN 都有一个 **forward manager**（查询转发器），默认绑定到 `127.0.0.1:6670`。在单机部署时，CN 和 DN 共享同一个 IP，导致端口冲突：
 
 ```
-CN forward manager: 127.0.0.1:6669  ← 第一个启动成功
-DN forward manager: 127.0.0.1:6669  ← 第二个启动失败: "Address already in use"
+CN forward manager: 127.0.0.1:6670  ← 第一个启动成功
+DN forward manager: 127.0.0.1:6670  ← 第二个启动失败: "Address already in use"
 ```
 
-Docker 多节点不受影响，因为每个容器有独立 IP（172.20.0.x），forward manager 可以各自绑定 6669 端口。
+Docker 多节点不受影响，因为每个容器有独立 IP（172.20.0.x），forward manager 可以各自绑定 6670 端口。
+
+> **注意**：OpenTenBase 有两个独立的端口 — `pooler_port`（连接池，端口 6669）和 `forward_port`（查询转发，端口 6670）。不要混淆这两个端口。
 
 ---
 
@@ -43,44 +45,45 @@ Docker 多节点不受影响，因为每个容器有独立 IP（172.20.0.x），
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────┐ ┌────────┐│
 │  │  GTM         │  │  CN          │  │  DN01    │ │ DN02   ││
 │  │  172.20.0.2  │  │  172.20.0.3  │  │  .0.4    │ │ .0.5   ││
-│  │  Port: 11000 │  │  Port: 11000 │  │  :11000  │ │ :11000 ││
-│  │  Fwd: 6669   │  │  Fwd: 6669   │  │  Fwd:6669│ │Fwd:6669││
+│  │  Port: 6666  │  │  Port: 5432  │  │  :15432  │ │ :15433 ││
+│  │              │  │  Pool: 6669  │  │  Pool:6669│ │Pool:6669││
+│  │              │  │  Fwd:  6670  │  │  Fwd:6670 │ │Fwd:6670││
 │  └──────────────┘  └──────────────┘  └──────────┘ └────────┘│
 │                                                              │
-│  对外端口: CN 11000 → 宿主机 11000                            │
+│  对外端口: CN 5432 → 宿主机 5432                              │
 └──────────────────────────────────────────────────────────────┘
 ```
 
-每个容器有独立 IP，forward manager 端口 6669 互不冲突。
+每个容器有独立 IP，`pooler_port`（6669）和 `forward_port`（6670）互不冲突。
 
 ### 快速部署
 
 ```bash
 # 克隆仓库
 git clone https://github.com/muzimu217/OpenTenBase-deb.git
-cd OpenTenBase-deb/docker/cluster
+cd OpenTenBase-deb/docker/compose
 
 # 一键部署
-bash setup.sh
+DOCKER_BUILDKIT=0 docker-compose up -d
 ```
 
 ### 部署步骤详解
 
-`setup.sh` 自动完成以下步骤：
+Docker Compose 自动完成以下步骤：
 
-1. **构建基础镜像** — 基于 CentOS aarch64，安装 OpenTenBase
-2. **启动 4 个容器** — GTM(172.20.0.2), CN(172.20.0.3), DN01(172.20.0.4), DN02(172.20.0.5)
+1. **构建镜像** — 基于 Rocky Linux 8，安装 OpenTenBase
+2. **启动 4 个容器** — GTM, Coordinator, Datanode1, Datanode2
 3. **初始化数据目录** — `initdb` 带 `--master_gtm_nodename/ip/port` 参数
-4. **启动 GTM** → 启动 CN → 启动 DN
-5. **配置 forward port** — 在 CN 上 `UPDATE pgxc_node SET node_forward_port = 6669`
-6. **注册节点** — 在 DN 上用 `DROP NODE + CREATE NODE ... FORWARD=6669` 注册所有节点
+4. **启动 GTM** → 启动 Coordinator → 启动 Datanodes
+5. **配置端口** — 自动设置 `pooler_port=6669` 和 `forward_port=6670`
+6. **注册节点** — 自动同步 pgxc_node 表，使用 IP 地址（解决 forward manager 主机名验证问题）
 7. **创建节点组和 Shard Map** — `CREATE DEFAULT NODE GROUP` + `CREATE SHARDING GROUP`
 
 ### 连接数据库
 
 ```bash
-# 从宿主机连接（CN 端口映射到宿主机 11000）
-psql -h 127.0.0.1 -p 11000 -U opentenbase postgres
+# 从宿主机连接（CN 端口映射到宿主机 5432）
+psql -h 127.0.0.1 -p 5432 -U opentenbase postgres
 
 # 查看节点信息
 SELECT node_name, node_type, node_host, node_port, node_forward_port FROM pgxc_node;
@@ -95,18 +98,18 @@ SELECT * FROM test;
 
 ```bash
 # 停止集群
-cd docker/cluster && docker-compose down
+cd docker/compose && docker-compose down
 
 # 启动集群
 docker-compose up -d
 
 # 查看日志
-docker logs otb-gtm
-docker logs otb-cn
-docker logs otb-dn01
+docker logs opentenbase-gtm
+docker logs opentenbase-coordinator
+docker logs opentenbase-datanode1
 
 # 进入容器
-docker exec -it -u opentenbase otb-cn bash
+docker exec -it opentenbase-coordinator bash
 ```
 
 ### 配置说明
@@ -457,7 +460,7 @@ DROP TABLE test;
 
 ### 1. DN 启动失败："forward manager could not create listen socket"
 
-**原因**：单机部署时 CN 和 DN 的 forward manager 都尝试绑定 127.0.0.1:6669。
+**原因**：单机部署时 CN 和 DN 的 forward manager 都尝试绑定 127.0.0.1:6670。
 
 **解决**：使用 Docker 部署（每个容器独立 IP）或多机部署（每台服务器独立 IP）。
 
@@ -505,5 +508,6 @@ export PATH=/usr/lib/opentenbase/bin:$PATH
 |------|---------|------|
 | GTM | 6666 | 全局事务管理器 |
 | CN | 5432 | 协调节点（客户端连接） |
-| DN | 5432 | 数据节点 |
-| Forward Manager | 6669 | 连接池转发器（CN/DN 各自绑定，需不同 IP） |
+| DN | 15432/15433 | 数据节点 |
+| Pooler | 6669 | 连接池（CN/DN 各自绑定，需不同 IP） |
+| Forward Manager | 6670 | 查询转发器（CN/DN 各自绑定，需不同 IP） |
