@@ -15,7 +15,7 @@ sudo bash install.sh
 ```
 
 安装脚本会自动：
-- 检测 Ubuntu 版本（22.04 或 24.04）
+- 检测系统版本（Ubuntu 20.04/22.04/24.04、Debian 11/12）
 - 下载对应的 .deb 软件包
 - 通过 apt 解决依赖关系
 
@@ -159,7 +159,7 @@ fakeroot debian/rules binary
 |------|------|---------|------|
 | 单节点 | GTM + CN | 开发测试 | 已验证 |
 | Docker 多节点 | GTM + CN + N*DN | 测试/生产 | 已验证 |
-| 多机多节点 | GTM + CN + N*DN | 生产环境 | 理论可行 |
+| 多机多节点 | GTM + CN + N*DN | 生产环境 | 已验证 |
 | 单机多节点 | GTM + CN + DN | 不支持 | 端口冲突 |
 
 > **注意**：单机多节点不支持，因为 CN 和 DN 的 forward manager 都默认绑定 `127.0.0.1:6669`，导致端口冲突。Docker 多节点不受影响（每个容器有独立 IP）。详见 [部署指南](tutorials/07-deployment.md)。
@@ -254,133 +254,5 @@ sudo systemctl stop postgresql
 
 ---
 
-**维护者**：muzimu217  
-**最后更新**：2026-05-20
-
-## 使用 Docker 从源码构建
-
-### 前提条件
-
-- Docker 已安装并运行
-- Git
-
-### 快速开始
-
-```bash
-# 克隆仓库
-git clone https://github.com/muzimu217/OpenTenBase-deb.git
-cd OpenTenBase-deb
-
-# 测试构建 Ubuntu 20.04
-./test-build.sh -d ubuntu -v 20.04
-
-# 测试构建 Debian 12
-./test-build.sh -d debian -v 12
-
-# 测试所有支持的发行版
-./test-build.sh --all
-```
-
-### 支持的构建环境
-
-| 发行版 | 版本 | 代号 | Dockerfile |
-|--------|------|------|------------|
-| Ubuntu | 20.04 | focal | docker-ubuntu-20.04.Dockerfile |
-| Ubuntu | 22.04 | jammy | ubuntu-22.04.Dockerfile |
-| Ubuntu | 24.04 | noble | ubuntu-24.04.Dockerfile |
-| Debian | 11 | bullseye | docker-debian-11.Dockerfile |
-| Debian | 12 | bookworm | docker-debian-12.Dockerfile |
-
-### 手动构建
-
-```bash
-# 构建 Ubuntu 20.04 的 Docker 镜像
-docker build -f docker-ubuntu-20.04.Dockerfile -t opentenbase-builder:focal .
-
-# 克隆 OpenTenBase 源码
-git clone --depth=1 https://github.com/OpenTenBase/OpenTenBase.git source
-
-# 运行构建
-docker run \
-    --rm \
-    -v $(pwd)/source:/source \
-    -v $(pwd)/output:/output \
-    opentenbase-builder:focal
-
-# 检查输出
-ls -lh output/*.deb
-```
-
-### CI/CD 流水线
-
-项目使用 GitHub Actions 进行自动化构建：
-
-- **build.yml**: 原有工作流（Ubuntu 22.04/24.04）
-- **build-multi.yml**: 多发行版工作流（Ubuntu 20.04/22.04/24.04 + Debian 11/12）
-- **build-multi-optimized.yml**: 优化后的工作流（带缓存）
-
-触发构建：
-
-```bash
-# 创建新版本标签
-./release.sh v5.0-multi10
-
-# 或手动创建
-git tag -a v5.0-multi10 -m "Release v5.0-multi10"
-git push origin v5.0-multi10
-```
-
-## 版本发布
-
-### 使用发布脚本
-
-```bash
-# 显示帮助
-./release.sh --help
-
-# 模拟运行（不实际执行）
-./release.sh --dry-run v5.0-multi10
-
-# 带自定义消息的发布
-./release.sh -m "Bug 修复和改进" v5.0-multi10
-
-# 强制发布（跳过确认）
-./release.sh --force v5.0-multi10
-```
-
-### 手动发布
-
-1. 更新 `install.sh` 中的 TAG 版本
-2. 提交更改
-3. 创建 Git 标签
-4. 推送标签到 GitHub
-5. 等待 CI 构建并创建发布
-
-```bash
-# 更新 install.sh
-sed -i 's/TAG=".*"/TAG="v5.0-multi10"/' install.sh
-
-# 提交
-git add install.sh
-git commit -m "chore: update install.sh TAG to v5.0-multi10"
-
-# 创建标签
-git tag -a v5.0-multi10 -m "Release v5.0-multi10"
-
-# 推送
-git push origin main
-git push origin v5.0-multi10
-```
-
-## 贡献指南
-
-请参阅 [CONTRIBUTING_zh.md](CONTRIBUTING_zh.md)。
-
-## 许可证
-
-与 OpenTenBase 相同（Apache 2.0）。
-
----
-
-**维护者**：muzimu217  
-**最后更新**：2026-05-20
+**维护者**：muzimu217
+**最后更新**：2026-05-23

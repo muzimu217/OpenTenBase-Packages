@@ -15,7 +15,7 @@ sudo bash install.sh
 ```
 
 The installer automatically:
-- Detects Ubuntu version (22.04 or 24.04)
+- Detects OS version (Ubuntu 20.04/22.04/24.04, Debian 11/12)
 - Downloads correct .deb packages
 - Resolves dependencies via apt
 
@@ -148,21 +148,32 @@ cp -r /path/to/debian/ ./
 ```bash
 # Full compile
 fakeroot debian/rules binary
-
-# Or rebuild only .deb packages (no recompile)
-fakeroot debian/rules binary
 ```
 
-## 部署模式
+### Build with Docker (Recommended)
 
-| 模式 | 组件 | 适用场景 | 状态 |
-|------|------|---------|------|
-| 单节点 | GTM + CN | 开发测试 | 已验证 |
-| Docker 多节点 | GTM + CN + N*DN | 测试/生产 | 已验证 |
-| 多机多节点 | GTM + CN + N*DN | 生产环境 | 理论可行 |
-| 单机多节点 | GTM + CN + DN | 不支持 | 端口冲突 |
+```bash
+# Clone repo and build for a specific distro
+git clone https://github.com/muzimu217/OpenTenBase-deb.git
+cd OpenTenBase-deb
 
-> **注意**：单机多节点不支持，因为 CN 和 DN 的 forward manager 都默认绑定 `127.0.0.1:6669`，导致端口冲突。Docker 多节点不受影响（每个容器有独立 IP）。详见 [部署指南](tutorials/07-deployment.md)。
+# Build for Ubuntu 20.04
+./test-build.sh -d ubuntu -v 20.04
+
+# Build all 5 distros
+./test-build.sh --all
+```
+
+## Deployment Modes
+
+| Mode | Components | Use Case | Status |
+|------|-----------|----------|--------|
+| Single Node | GTM + CN | Dev/Test | Verified |
+| Docker Multi-node | GTM + CN + N*DN | Test/Prod | Verified |
+| Multi-machine | GTM + CN + N*DN | Production | Verified |
+| Single-machine Multi-node | GTM + CN + DN | Not supported | Port conflict |
+
+> **Note**: Single-machine multi-node is not supported because CN and DN forward managers both bind to `127.0.0.1:6669`, causing port conflicts. Docker multi-node is unaffected (each container has its own IP). See [Deployment Guide](tutorials/07-deployment.md).
 
 ## Known Limitations
 
@@ -200,6 +211,8 @@ opentenbase-psql -h 127.0.0.1 -p 5432 -U opentenbase -d template1
 ```
 
 #### 3. GTM Startup Failed
+
+```bash
 # Check GTM logs
 tail -f /var/log/opentenbase/gtm.log
 
@@ -252,133 +265,5 @@ Same as OpenTenBase (Apache 2.0).
 
 ---
 
-**Maintainer**: muzimu217  
-**Last Updated**: 2026-05-20
-
-## Building from Source with Docker
-
-### Prerequisites
-
-- Docker installed and running
-- Git
-
-### Quick Start
-
-```bash
-# Clone the repository
-git clone https://github.com/muzimu217/OpenTenBase-deb.git
-cd OpenTenBase-deb
-
-# Test build for Ubuntu 20.04
-./test-build.sh -d ubuntu -v 20.04
-
-# Test build for Debian 12
-./test-build.sh -d debian -v 12
-
-# Test all supported distributions
-./test-build.sh --all
-```
-
-### Supported Build Environments
-
-| Distribution | Version | Codename | Dockerfile |
-|--------------|---------|----------|------------|
-| Ubuntu | 20.04 | focal | docker-ubuntu-20.04.Dockerfile |
-| Ubuntu | 22.04 | jammy | ubuntu-22.04.Dockerfile |
-| Ubuntu | 24.04 | noble | ubuntu-24.04.Dockerfile |
-| Debian | 11 | bullseye | docker-debian-11.Dockerfile |
-| Debian | 12 | bookworm | docker-debian-12.Dockerfile |
-
-### Manual Build
-
-```bash
-# Build Docker image for Ubuntu 20.04
-docker build -f docker-ubuntu-20.04.Dockerfile -t opentenbase-builder:focal .
-
-# Clone OpenTenBase source
-git clone --depth=1 https://github.com/OpenTenBase/OpenTenBase.git source
-
-# Run build
-docker run \
-    --rm \
-    -v $(pwd)/source:/source \
-    -v $(pwd)/output:/output \
-    opentenbase-builder:focal
-
-# Check output
-ls -lh output/*.deb
-```
-
-### CI/CD Pipeline
-
-The project uses GitHub Actions for automated builds:
-
-- **build.yml**: Original workflow (Ubuntu 22.04/24.04)
-- **build-multi.yml**: Multi-distro workflow (Ubuntu 20.04/22.04/24.04 + Debian 11/12)
-- **build-multi-optimized.yml**: Optimized workflow with caching
-
-To trigger a build:
-
-```bash
-# Create a new version tag
-./release.sh v5.0-multi10
-
-# Or manually
-git tag -a v5.0-multi10 -m "Release v5.0-multi10"
-git push origin v5.0-multi10
-```
-
-## Version Release
-
-### Using Release Script
-
-```bash
-# Show help
-./release.sh --help
-
-# Dry run (test without executing)
-./release.sh --dry-run v5.0-multi10
-
-# Release with custom message
-./release.sh -m "Bug fixes and improvements" v5.0-multi10
-
-# Force release (skip confirmation)
-./release.sh --force v5.0-multi10
-```
-
-### Manual Release
-
-1. Update `install.sh` TAG version
-2. Commit changes
-3. Create Git tag
-4. Push tag to GitHub
-5. Wait for CI to build and create release
-
-```bash
-# Update install.sh
-sed -i 's/TAG=".*"/TAG="v5.0-multi10"/' install.sh
-
-# Commit
-git add install.sh
-git commit -m "chore: update install.sh TAG to v5.0-multi10"
-
-# Create tag
-git tag -a v5.0-multi10 -m "Release v5.0-multi10"
-
-# Push
-git push origin main
-git push origin v5.0-multi10
-```
-
-## Contributing
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
-
-## License
-
-Same as OpenTenBase (Apache 2.0).
-
----
-
-**Maintainer**: muzimu217  
-**Last Updated**: 2026-05-20
+**Maintainer**: muzimu217
+**Last Updated**: 2026-05-23
