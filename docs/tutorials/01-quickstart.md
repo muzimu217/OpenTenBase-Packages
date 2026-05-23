@@ -254,6 +254,7 @@ OpenTenBase 是一个分布式数据库，由三个核心组件组成：
 
 - 📖 阅读 [基础操作](02-basic-ops.md) - 学习常用的数据库操作
 - 🏗️ 了解 [架构原理](03-architecture.md) - 深入理解分布式架构
+- 🚀 查看 [部署指南](07-deployment.md) - Docker 多节点、RPM 单节点/多机部署
 - 🧪 尝试 [实验1：部署集群](../labs/lab-01-deploy.md) - 动手实践
 
 ## 资源链接

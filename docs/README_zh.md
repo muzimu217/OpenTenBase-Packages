@@ -153,10 +153,21 @@ fakeroot debian/rules binary
 fakeroot debian/rules binary
 ```
 
+## 部署模式
+
+| 模式 | 组件 | 适用场景 | 状态 |
+|------|------|---------|------|
+| 单节点 | GTM + CN | 开发测试 | 已验证 |
+| Docker 多节点 | GTM + CN + N*DN | 测试/生产 | 已验证 |
+| 多机多节点 | GTM + CN + N*DN | 生产环境 | 理论可行 |
+| 单机多节点 | GTM + CN + DN | 不支持 | 端口冲突 |
+
+> **注意**：单机多节点不支持，因为 CN 和 DN 的 forward manager 都默认绑定 `127.0.0.1:6669`，导致端口冲突。Docker 多节点不受影响（每个容器有独立 IP）。详见 [部署指南](tutorials/07-deployment.md)。
+
 ## 已知限制
 
 1. **许可证问题**：OpenTenBase 需要有效许可证才能执行写操作。开源版本为只读模式。
-2. **单机部署**：当前配置仅支持单机多节点。跨机器部署需要修改 `opentenbase.conf`。
+2. **单机多节点**：由于 forward manager 端口冲突（CN 和 DN 都绑定 127.0.0.1:6669），不支持单机多节点部署。请使用 Docker 或多机部署。
 3. **无 systemd**：某些容器环境没有 systemd，使用 `opentenbase-ctl` 直接管理。
 4. **Ubuntu 20.04 支持**：由于 GitHub Actions runner 不可用，暂未提供 Focal 软件包。
 
