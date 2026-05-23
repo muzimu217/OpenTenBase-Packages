@@ -5,6 +5,18 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
+    inputs:
+      distro:
+        description: 'Build specific distro (leave empty for all)'
+        required: false
+        type: choice
+        options:
+          - ''
+          - ubuntu-20.04
+          - ubuntu-22.04
+          - ubuntu-24.04
+          - debian-11
+          - debian-12
 
 jobs:
   build:
@@ -34,13 +46,29 @@ jobs:
             codename: bookworm
             dockerfile: docker/build/docker-debian-12.Dockerfile
 
+    # Skip if workflow_dispatch with specific distro that doesn't match
+    # Empty input = build all; specific input = only build matching
     steps:
+      - name: Check if should build
+        id: check
+        run: |
+          INPUT_DISTRO="${{ github.event.inputs.distro }}"
+          MATRIX_KEY="${{ matrix.distro }}-${{ matrix.version }}"
+          if [ -z "$INPUT_DISTRO" ] || [ "$INPUT_DISTRO" = "$MATRIX_KEY" ]; then
+            echo "should_build=true" >> $GITHUB_OUTPUT
+          else
+            echo "should_build=false" >> $GITHUB_OUTPUT
+          fi
+          echo "Building: $MATRIX_KEY (input: $INPUT_DISTRO)"
+
       - name: Checkout packaging repo
+        if: steps.check.outputs.should_build == 'true'
         uses: actions/checkout@v4
         with:
           path: packaging
 
       - name: Checkout OpenTenBase source
+        if: steps.check.outputs.should_build == 'true'
         uses: actions/checkout@v4
         with:
           repository: OpenTenBase/OpenTenBase
@@ -48,19 +76,19 @@ jobs:
           fetch-depth: 1
 
       - name: Merge packaging into source
+        if: steps.check.outputs.should_build == 'true'
         run: |
           mkdir -p source/debian
-          # Copy debian/ contents directly
           cp -a packaging/debian/* source/debian/
-          # Copy config/ to source root (referenced by debian/rules)
           cp -a packaging/config source/
-          # Copy patches/
           cp -a packaging/patches source/debian/
 
       - name: Set up Docker Buildx
+        if: steps.check.outputs.should_build == 'true'
         uses: docker/setup-buildx-action@v3
 
       - name: Build Docker image
+        if: steps.check.outputs.should_build == 'true'
         run: |
           docker build \
             --file packaging/${{ matrix.dockerfile }} \
@@ -68,6 +96,7 @@ jobs:
             .
 
       - name: Build packages
+        if: steps.check.outputs.should_build == 'true'
         run: |
           docker run \
             --volume $(pwd)/source:/source \
@@ -75,6 +104,7 @@ jobs:
             opentenbase-builder:${{ matrix.distro }}-${{ matrix.version }}
 
       - name: Verify packages
+        if: steps.check.outputs.should_build == 'true'
         run: |
           for deb in output/*.deb; do
             echo "=== $(basename $deb) ==="
@@ -83,11 +113,11 @@ jobs:
           done
 
       - name: Rename packages with codename
+        if: steps.check.outputs.should_build == 'true'
         run: |
           sudo chown -R $(id -u):$(id -g) output/
           cd output
           for deb in *.deb; do
-            # Insert codename: pkg_5.0-1ubuntu1_arch.deb -> pkg_5.0-1ubuntu1~codename_arch.deb
             newname=$(echo "$deb" | sed "s/_5.0-1ubuntu1_/_5.0-1ubuntu1~${{ matrix.codename }}_/")
             if [ "$newname" != "$deb" ]; then
               mv "$deb" "$newname"
@@ -97,6 +127,7 @@ jobs:
           ls -la *.deb
 
       - name: Upload artifacts
+        if: steps.check.outputs.should_build == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: debs-${{ matrix.distro }}-${{ matrix.codename }}

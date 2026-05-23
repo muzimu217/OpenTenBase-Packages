@@ -1,61 +1,99 @@
 name: Test Packages
 
 on:
-  workflow_call:
+  workflow_dispatch:
     inputs:
       distro:
-        required: true
-        type: string
-      version:
-        required: true
-        type: string
-      codename:
-        required: true
-        type: string
+        description: 'Test specific distro (leave empty for all)'
+        required: false
+        type: choice
+        options:
+          - ''
+          - ubuntu-20.04
+          - ubuntu-22.04
+          - ubuntu-24.04
+          - debian-11
+          - debian-12
 
 jobs:
   test:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - distro: ubuntu
+            version: "20.04"
+            codename: focal
+          - distro: ubuntu
+            version: "22.04"
+            codename: jammy
+          - distro: ubuntu
+            version: "24.04"
+            codename: noble
+          - distro: debian
+            version: "11"
+            codename: bullseye
+          - distro: debian
+            version: "12"
+            codename: bookworm
+
     steps:
+      - name: Check if should test
+        id: check
+        run: |
+          INPUT_DISTRO="${{ github.event.inputs.distro }}"
+          MATRIX_KEY="${{ matrix.distro }}-${{ matrix.version }}"
+          if [ -z "$INPUT_DISTRO" ] || [ "$INPUT_DISTRO" = "$MATRIX_KEY" ]; then
+            echo "should_test=true" >> $GITHUB_OUTPUT
+          else
+            echo "should_test=false" >> $GITHUB_OUTPUT
+          fi
+          echo "Testing: $MATRIX_KEY (input: $INPUT_DISTRO)"
+
+      - name: Checkout repo
+        if: steps.check.outputs.should_test == 'true'
+        uses: actions/checkout@v4
+
       - name: Download packages
+        if: steps.check.outputs.should_test == 'true'
         uses: actions/download-artifact@v4
         with:
-          name: debs-${{ inputs.distro }}-${{ inputs.codename }}
+          name: debs-${{ matrix.distro }}-${{ matrix.codename }}
           path: packages/
 
-      - name: Create test container
+      - name: Run smoke test in Docker
+        if: steps.check.outputs.should_test == 'true'
         run: |
-          cat > Dockerfile.test << 'EOF'
-          FROM ${{ inputs.distro }}:${{ inputs.version }}
+          cat > Dockerfile.test << EOF
+          FROM ${{ matrix.distro }}:${{ matrix.version }}
           ENV DEBIAN_FRONTEND=noninteractive
 
           # Install runtime dependencies
           RUN apt-get update && apt-get install -y \
               libreadline8 libssl3 libxml2 libcurl4 \
               libpam0g liblz4-1 libzstd1 \
-              libssh2-1 sudo \
+              libssh2-1 sudo procps \
               && rm -rf /var/lib/apt/lists/*
 
-          # Copy and install packages
+          # Fix for older distros
+          RUN apt-get update && apt-get install -y \
+              libreadline7 libssl1.1 2>/dev/null || true
+
+          # Copy packages
           COPY packages/*.deb /tmp/debs/
-          RUN dpkg -i /tmp/debs/*.deb || apt-get install -f -y
+
+          # Install packages
+          RUN dpkg -i /tmp/debs/*.deb 2>/dev/null || apt-get install -f -y
 
           # Copy test script
-          COPY test/integration-test.sh /test/
-          RUN chmod +x /test/integration-test.sh
+          COPY test/smoke-test.sh /test/
+          RUN chmod +x /test/smoke-test.sh
 
-          CMD ["/test/integration-test.sh"]
+          CMD ["/test/smoke-test.sh"]
           EOF
 
-      - name: Build test image
-        run: |
-          docker build \
-            --build-arg DISTRO=${{ inputs.distro }} \
-            --build-arg VERSION=${{ inputs.version }} \
-            -f Dockerfile.test \
-            -t opentenbase-test:${{ inputs.codename }} \
-            .
+          docker build -f Dockerfile.test -t opentenbase-test:${{ matrix.codename }} .
 
-      - name: Run integration tests
-        run: |
-          docker run --rm opentenbase-test:${{ inputs.codename }}
+          # Run with capabilities for process management
+          docker run --rm --cap-add SYS_PTRACE opentenbase-test:${{ matrix.codename }}
