@@ -172,8 +172,9 @@ FATAL: binding threads failed for 22
 # 检查 CPU 核心数
 nproc
 
-# 如果仍失败，手动设置线程数
-echo "gtm_thread_count = 2" >> /var/lib/opentenbase/gtm/gtm.conf
+# 如果仍失败，手动编辑 gtm.conf 设置线程数
+# 注意：gtm_thread_count 不是合法参数，请参考 GTM 文档
+vim /var/lib/opentenbase/gtm/gtm.conf
 opentenbase-ctl restart
 ```
 

@@ -419,11 +419,12 @@ GTM 尝试绑定的线程数超过了 CPU 核心数。
 nproc
 
 # 2. 检查 GTM 配置
-grep gtm_thread_count /opt/opentenbase/gtm/data/gtm.conf
+grep thread_count /opt/opentenbase/gtm/data/gtm.conf
 
 # 3. 修改配置（确保不超过 CPU 核心数）
 vim /opt/opentenbase/gtm/data/gtm.conf
-# 设置：gtm_thread_count = 2（或等于 nproc 的值）
+# 设置：thread_count = 2（或等于 nproc 的值）
+# 注意：gtm_thread_count 不是合法参数，请使用 thread_count
 
 # 4. 重启 GTM
 gtm_ctl -D /opt/opentenbase/gtm/data restart

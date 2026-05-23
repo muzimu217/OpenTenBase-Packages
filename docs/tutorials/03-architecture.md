@@ -88,7 +88,7 @@ nodename = 'gtm_master'
 data_directory = '/opt/opentenbase/gtm/data'
 
 # 线程数（不能超过 CPU 核心数）
-gtm_thread_count = 4
+thread_count = 4
 
 # 日志配置
 log_connections = on

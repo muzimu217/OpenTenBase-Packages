@@ -20,7 +20,7 @@
 
 **注意事项：**
 - GTM 线程数不能超过 CPU 核心数，避免 `binding threads failed` 错误
-- 使用 `nproc` 检查核心数，动态配置 `gtm_thread_count`
+- 使用 `nproc` 检查核心数，动态配置 `thread_count`（注意：`gtm_thread_count` 不是合法参数）
 
 ```bash
 # 检测 CPU 核心数
@@ -146,7 +146,7 @@ port = 6666
 nodename = 'gtm_master'
 data_directory = '/opt/opentenbase/gtm/data'
 startup = TXN
-gtm_thread_count = 4  # 不要超过 CPU 核心数
+thread_count = 4  # 不要超过 CPU 核心数（注意：gtm_thread_count 不是合法参数）
 
 # 高可用配置
 gtm_standby_host = '192.168.2.11'

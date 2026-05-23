@@ -42,8 +42,8 @@ cmd_init() {
         # Override port
         sed -i "s/^port =.*/port = $GTM_PORT/" "$GTM_PGDATA/gtm.conf"
         sed -i "s/^nodename =.*/nodename = 'gtm_master'/" "$GTM_PGDATA/gtm.conf"
-        # 设置线程数，避免绑定失败（2 核系统会报 FATAL: binding threads failed for 22）
-        echo "gtm_thread_count = $GTM_THREADS" >> "$GTM_PGDATA/gtm.conf"
+        # 注意：不追加 gtm_thread_count，该参数不被 GTM 二进制识别，会导致配置解析失败
+        # 如果遇到 "binding threads failed" 错误，请手动编辑 gtm.conf 设置线程数
     else
         echo ">> gtm already initialised, skipping"
     fi
