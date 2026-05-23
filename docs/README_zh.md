@@ -169,7 +169,6 @@ fakeroot debian/rules binary
 1. **许可证问题**：OpenTenBase 需要有效许可证才能执行写操作。开源版本为只读模式。
 2. **单机多节点**：由于 forward manager 端口冲突（CN 和 DN 都绑定 127.0.0.1:6669），不支持单机多节点部署。请使用 Docker 或多机部署。
 3. **无 systemd**：某些容器环境没有 systemd，使用 `opentenbase-ctl` 直接管理。
-4. **Ubuntu 20.04 支持**：由于 GitHub Actions runner 不可用，暂未提供 Focal 软件包。
 
 ## 故障排查
 

@@ -169,7 +169,6 @@ fakeroot debian/rules binary
 1. **License Issue**: OpenTenBase requires a valid license for write operations. Open-source version is read-only.
 2. **Single-machine Multi-node**: Not supported due to forward manager port conflict (CN and DN both bind to 127.0.0.1:6669). Use Docker or multi-machine deployment instead.
 3. **No systemd**: Some container environments don't have systemd, use `opentenbase-ctl` directly.
-4. **Ubuntu 20.04 Support**: Focal packages not available due to GitHub Actions runner unavailability.
 
 ## Troubleshooting
 
