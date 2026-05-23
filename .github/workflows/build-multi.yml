@@ -186,7 +186,7 @@ jobs:
           ENV DEBIAN_FRONTEND=noninteractive
 
           RUN apt-get update && apt-get install -y \
-              sudo procps \
+              sudo procps libatomic1 \
               && rm -rf /var/lib/apt/lists/*
 
           COPY packages/*.deb /tmp/debs/
