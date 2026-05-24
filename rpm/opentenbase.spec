@@ -211,6 +211,9 @@ static inline size_t ZSTD_CCtx_setPledgedSrcSize(ZSTD_CCtx* cctx, unsigned long 
 static inline size_t ZSTD_CCtx_loadDictionary(ZSTD_CCtx* cctx, const void* dict, size_t dictSize) {
     (void)cctx; (void)dict; (void)dictSize; return 0;
 }
+static inline size_t ZSTD_CCtx_reset(ZSTD_CCtx* cctx, ZSTD_ResetDirective reset) {
+    (void)cctx; (void)reset; return 0;
+}
 
 /* DCtx advanced API */
 static inline size_t ZSTD_DCtx_setParameter(ZSTD_DCtx* dctx, ZSTD_dParameter param, int value) {
@@ -231,6 +234,9 @@ static inline size_t ZSTD_initCStream(ZSTD_CStream* zcs, int compressionLevel) {
 }
 static inline size_t ZSTD_compressStream(ZSTD_CStream* zcs, ZSTD_outBuffer* output, ZSTD_inBuffer* input) {
     (void)zcs; (void)output; (void)input; return (size_t)-1;
+}
+static inline size_t ZSTD_compressStream2(ZSTD_CCtx* cctx, ZSTD_outBuffer* output, ZSTD_inBuffer* input, ZSTD_EndDirective endOp) {
+    (void)cctx; (void)output; (void)input; (void)endOp; return (size_t)-1;
 }
 static inline size_t ZSTD_flushStream(ZSTD_CStream* zcs, ZSTD_outBuffer* output) {
     (void)zcs; (void)output; return (size_t)-1;
