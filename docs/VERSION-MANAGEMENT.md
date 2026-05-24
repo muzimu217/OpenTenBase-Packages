@@ -62,7 +62,7 @@ OpenTenBase supports installing multiple versions side-by-side, similar to how P
 
 ## Quick Start
 
-### Install a Stable Version (Pre-built)
+### Install on Debian/Ubuntu (DEB)
 
 ```bash
 # Install v5.0 (default, stable)
@@ -71,6 +71,27 @@ curl -sSL https://github.com/muzimu217/OpenTenBase-deb/releases/latest/download/
 # Install a specific stable version
 curl -sSL https://github.com/muzimu217/OpenTenBase-deb/releases/latest/download/install.sh | sudo bash -s -- --version 2.6.0
 ```
+
+### Install on RHEL/CentOS/Rocky/Fedora/OpenEuler (RPM)
+
+```bash
+# Download the RPM package from GitHub Releases
+# Replace <arch> with x86_64 or aarch64
+dnf install -y https://github.com/muzimu217/OpenTenBase-deb/releases/download/v5.0-multi10/opentenbase-5.0-1.<arch>.rpm
+
+# Or install from a local RPM file
+dnf install -y opentenbase-5.0-1.<arch>.rpm
+```
+
+RPM packages are available for:
+- CentOS Stream 8/9 (x86_64)
+- CentOS Stream 9 (aarch64)
+- Rocky Linux 8/9 (x86_64)
+- Rocky Linux 9 (aarch64)
+- AlmaLinux 8/9 (x86_64)
+- AlmaLinux 9 (aarch64)
+- Fedora 40 (x86_64, aarch64)
+- OpenEuler 22.03 (x86_64, aarch64)
 
 ### Install from Master Branch (Build from Source)
 
@@ -184,12 +205,25 @@ OTB_CONFIG=/etc/opentenbase/2.6.0/opentenbase.conf opentenbase-ctl start
 
 ### In-Place Upgrade (Same Major Version)
 
+**Debian/Ubuntu:**
 ```bash
 # Stop the current version
 opentenbase-ctl stop
 
 # Install new package (will overwrite files in versioned directory)
 sudo dpkg -i opentenbase_5.1-1ubuntu1_amd64.deb
+
+# Start with updated binaries
+opentenbase-ctl start
+```
+
+**RHEL/CentOS/Rocky/Fedora/OpenEuler:**
+```bash
+# Stop the current version
+opentenbase-ctl stop
+
+# Upgrade package
+sudo dnf install -y opentenbase-5.1-1.x86_64.rpm
 
 # Start with updated binaries
 opentenbase-ctl start

@@ -624,6 +624,7 @@ main "$@"
   - [x] `scripts/install.sh` — 扩展发行版检测，支持所有 DEB 发行版 + RPM 发行版
 
 - [x] **测试验证** — 全部 16 个 DEB 发行版通过 CI 烟雾测试
+- [x] **RPM 服务器验证** — 在 OpenEuler 22.03 aarch64 上构建并测试通过，所有组件（gtm/coord/dn1）运行正常
 - [x] **自动 CI/CD 流水线** — GitHub Actions 自动构建 + 测试 + 发布
 - [x] **Docker Compose 多节点部署** — 完整集群（GTM + Coordinator + 2 Datanodes）验证通过
 - [x] **分布式查询测试** — INSERT/SELECT/UPDATE/DELETE/RETURNING 全部通过
@@ -692,9 +693,9 @@ main "$@"
 
 ---
 
-**文档版本**: 1.6
-**最后更新**: 2026-05-23
-**最新变更**: 多版本管理支持完成，版本化路径 + 符号链接切换机制
+**文档版本**: 1.7
+**最后更新**: 2026-05-24
+**最新变更**: RPM 包完整可用 — 从源码构建，服务器验证通过（OpenEuler 22.03 aarch64，gtm/coord/dn1 全部 RUNNING）
 **维护者**: muzimu217
 
 ---

@@ -62,7 +62,7 @@ OpenTenBase 支持多个版本并行安装，类似于 PostgreSQL 管理 `postgr
 
 ## 快速开始
 
-### 安装稳定版（预编译包）
+### 在 Debian/Ubuntu 上安装（DEB）
 
 ```bash
 # 安装 v5.0（默认，稳定版）
@@ -71,6 +71,27 @@ curl -sSL https://github.com/muzimu217/OpenTenBase-deb/releases/latest/download/
 # 安装指定稳定版
 curl -sSL https://github.com/muzimu217/OpenTenBase-deb/releases/latest/download/install.sh | sudo bash -s -- --version 2.6.0
 ```
+
+### 在 RHEL/CentOS/Rocky/Fedora/OpenEuler 上安装（RPM）
+
+```bash
+# 从 GitHub Releases 下载 RPM 包
+# 将 <arch> 替换为 x86_64 或 aarch64
+dnf install -y https://github.com/muzimu217/OpenTenBase-deb/releases/download/v5.0-multi10/opentenbase-5.0-1.<arch>.rpm
+
+# 或从本地 RPM 文件安装
+dnf install -y opentenbase-5.0-1.<arch>.rpm
+```
+
+RPM 包支持的发行版：
+- CentOS Stream 8/9（x86_64）
+- CentOS Stream 9（aarch64）
+- Rocky Linux 8/9（x86_64）
+- Rocky Linux 9（aarch64）
+- AlmaLinux 8/9（x86_64）
+- AlmaLinux 9（aarch64）
+- Fedora 40（x86_64, aarch64）
+- OpenEuler 22.03（x86_64, aarch64）
 
 ### 从 Master 分支构建安装
 
@@ -184,12 +205,25 @@ OTB_CONFIG=/etc/opentenbase/2.6.0/opentenbase.conf opentenbase-ctl start
 
 ### 就地升级（同一大版本）
 
+**Debian/Ubuntu：**
 ```bash
 # 停止当前版本
 opentenbase-ctl stop
 
 # 安装新包（会覆盖版本目录中的文件）
 sudo dpkg -i opentenbase_5.1-1ubuntu1_amd64.deb
+
+# 使用更新的二进制文件启动
+opentenbase-ctl start
+```
+
+**RHEL/CentOS/Rocky/Fedora/OpenEuler：**
+```bash
+# 停止当前版本
+opentenbase-ctl stop
+
+# 升级包
+sudo dnf install -y opentenbase-5.1-1.x86_64.rpm
 
 # 使用更新的二进制文件启动
 opentenbase-ctl start

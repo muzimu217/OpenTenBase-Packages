@@ -622,6 +622,7 @@ This is the **standard route for official packaging of open source projects**, a
   - [x] `scripts/install.sh` — Expanded distribution detection, support all DEB + RPM distributions
 
 - [x] **Testing and verification** — All 16 DEB distributions pass CI smoke tests
+- [x] **RPM server verification** — Built and tested on OpenEuler 22.03 aarch64, all components (gtm/coord/dn1) RUNNING
 - [x] **Automated CI/CD pipeline** — GitHub Actions auto-build + test + publish
 - [x] **Docker Compose multi-node deployment** — Full cluster (GTM + Coordinator + 2 Datanodes) verified
 - [x] **Distributed query testing** — INSERT/SELECT/UPDATE/DELETE/RETURNING all passed
@@ -690,9 +691,9 @@ This is the **standard route for official packaging of open source projects**, a
 
 ---
 
-**Document Version**: 1.5
-**Last Updated**: 2026-05-23
-**Latest Changes**: Multi-version management support completed, versioned paths + symlink switching
+**Document Version**: 1.6
+**Last Updated**: 2026-05-24
+**Latest Changes**: RPM packages fully working — from-source build, server verified on OpenEuler 22.03 aarch64 (gtm/coord/dn1 all RUNNING)
 **Maintainer**: muzimu217
 
 ---
