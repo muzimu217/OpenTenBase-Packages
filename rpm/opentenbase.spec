@@ -288,15 +288,19 @@ CFLAGS="$CFLAGS -march=armv8-a"
 export CFLAGS
 export LDFLAGS="-Wl,-rpath,%{otb_prefix}/lib"
 
-# Add -latomic if available (needed for 128-bit atomics on some distros)
-# Check standard paths, ldconfig, and GCC library directory
-LIBATOMIC_PATH=$(find /usr/lib64 /usr/lib /usr/lib/gcc -name 'libatomic.so' 2>/dev/null | head -1)
-if [ -n "$LIBATOMIC_PATH" ] || ldconfig -p 2>/dev/null | grep -q 'libatomic\.so'; then
-    export LDFLAGS="$LDFLAGS -latomic"
-    echo "NOTE: libatomic found, adding -latomic to LDFLAGS"
-else
-    echo "NOTE: libatomic not found, 128-bit atomics may fail"
+# Add -latomic if needed for 128-bit atomics (check by trying a test compile)
+# Some distros (Fedora 40+) need -latomic for __sync_val_compare_and_swap_16
+cat > /tmp/test_atomic.c << 'EOFAT'
+#include <stdint.h>
+int main() { __int128 x = 0; __sync_val_compare_and_swap(&x, 0, 1); return 0; }
+EOFAT
+if ! gcc -o /tmp/test_atomic /tmp/test_atomic.c 2>/dev/null; then
+    if gcc -o /tmp/test_atomic /tmp/test_atomic.c -latomic 2>/dev/null; then
+        export LDFLAGS="$LDFLAGS -latomic"
+        echo "NOTE: 128-bit atomics need -latomic, adding to LDFLAGS"
+    fi
 fi
+rm -f /tmp/test_atomic /tmp/test_atomic.c
 
 CONFIGURE_OPTS="--prefix=%{otb_prefix} \
     --sysconfdir=/etc/opentenbase/%{otb_ver} \
