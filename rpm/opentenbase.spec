@@ -56,8 +56,11 @@ if grep -q 'false, false, NULL' src/gtm/main/gtm_opt.c 2>/dev/null; then
 fi
 
 # Patch configure to use dynamic linking instead of hardcoded /usr/local/lib paths
-sed -i 's|/usr/local/lib/libzstd.a|-lzstd|g' configure
 sed -i 's|/usr/local/lib/liblz4.a|-llz4|g' configure
+# Only patch zstd if zstd-devel is available
+if [ -f /usr/include/zstd.h ]; then
+    sed -i 's|/usr/local/lib/libzstd.a|-lzstd|g' configure
+fi
 
 
 # Architecture flags
@@ -84,9 +87,11 @@ CONFIGURE_OPTS="--prefix=%{otb_prefix} \
     --with-libxml \
     --with-lz4"
 
-# Optional features (may not be available on all distros)
-if pkg-config --exists libzstd 2>/dev/null || [ -f /usr/include/zstd.h ]; then
+# Optional: zstd support (requires zstd-devel with headers)
+if [ -f /usr/include/zstd.h ] && pkg-config --exists libzstd 2>/dev/null; then
     CONFIGURE_OPTS="$CONFIGURE_OPTS --with-zstd"
+else
+    echo "NOTE: zstd-devel not found, building without zstd support"
 fi
 
 ./configure $CONFIGURE_OPTS
