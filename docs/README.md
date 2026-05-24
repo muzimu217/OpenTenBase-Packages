@@ -1,269 +1,271 @@
-# OpenTenBase .deb Packaging
+# OpenTenBase Packages
 
 English | [中文](README_zh.md)
 
-Ubuntu .deb packaging for [OpenTenBase](https://github.com/OpenTenBase/OpenTenBase) v5.0 (distributed SQL database based on PostgreSQL 10).
+> **Official cross-platform package repository for OpenTenBase** — Enterprise-grade multi-format, multi-distro packaging and distribution for the OpenTenBase distributed SQL database.
+
+---
+
+## Overview
+
+**OpenTenBase Packages** is the official packaging and distribution project for [OpenTenBase](https://github.com/OpenTenBase/OpenTenBase), a distributed SQL database based on PostgreSQL. We provide standardized binary packages for major Linux distributions, supporting both DEB (Debian/Ubuntu) and RPM (RHEL/CentOS/Fedora) packaging systems across x86_64 and ARM64 architectures.
+
+**Goal**: Build a **long-term maintained, auto-built, multi-version coexisting** official package repository for OpenTenBase — like PostgreSQL's `apt.postgresql.org` and Docker's `download.docker.com`.
+
+---
+
+## Features
+
+| Feature | Description |
+|---------|-------------|
+| **Multi-format** | DEB (`.deb`) + RPM (`.rpm`) dual format support |
+| **Multi-distro** | Ubuntu 20.04 / 22.04 / 24.04, Debian 11 / 12, RHEL/CentOS 8/9, Fedora, Rocky Linux, AlmaLinux, OpenEuler |
+| **Multi-arch** | x86_64 (amd64) + ARM64 (aarch64) |
+| **Multi-version coexistence** | Install v5.0 / v2.6 / v2.5 and dev versions side-by-side, switch with `opentenbase-ctl switch` |
+| **One-line install** | `curl -sSL ... \| sudo bash` — auto-detects OS, downloads correct packages, resolves dependencies |
+| **CI/CD automation** | GitHub Actions for automated build, sign, and publish |
+| **systemd integration** | Native systemd service units, managed via `systemctl` |
+| **Cluster management** | Built-in `opentenbase-ctl` script for one-command init, start, stop |
+
+---
 
 ## Quick Install
 
 ### One-line Install (Recommended)
 
 ```bash
-# Download and run installer
-curl -sLO https://github.com/muzimu217/OpenTenBase-deb/releases/download/v5.0-multi10/install.sh
+curl -sLO https://github.com/muzimu217/OpenTenBase-packages/releases/latest/download/install.sh
 sudo bash install.sh
 ```
 
 The installer automatically:
-- Detects OS version (Ubuntu 20.04/22.04/24.04, Debian 11/12)
-- Downloads correct .deb packages
-- Resolves dependencies via apt
+- Detects operating system and version
+- Configures package repository (APT / YUM)
+- Downloads and installs the correct package format
+- Resolves all dependencies
 
-### Manual Install
+### APT Manual Install (Debian / Ubuntu)
 
 ```bash
-# For Ubuntu 24.04 (Noble)
-wget https://github.com/muzimu217/OpenTenBase-deb/releases/download/v5.0-multi10/opentenbase_5.0-1ubuntu1.noble_all.deb
-wget https://github.com/muzimu217/OpenTenBase-deb/releases/download/v5.0-multi10/opentenbase-server_5.0-1ubuntu1.noble_amd64.deb
-wget https://github.com/muzimu217/OpenTenBase-deb/releases/download/v5.0-multi10/opentenbase-client_5.0-1ubuntu1.noble_amd64.deb
-wget https://github.com/muzimu217/OpenTenBase-deb/releases/download/v5.0-multi10/opentenbase-contrib_5.0-1ubuntu1.noble_amd64.deb
-sudo dpkg -i ./*.deb || sudo apt-get install -f -y
+# Add repository
+curl -sSL https://github.com/muzimu217/OpenTenBase-packages/releases/latest/download/setup-apt.sh | sudo bash
+
+# Install
+sudo apt update
+sudo apt install opentenbase
 ```
 
-> **Note**: If `dpkg` reports missing dependencies (e.g. `libossp-uuid16` or `libpqxx-7.8t64`), these are packaging metadata errors — the binaries do **not** actually require these libraries at runtime. Use `sudo dpkg --force-depends -i ./*.deb` to install, then run `sudo mkdir -p /usr/lib/opentenbase/lib/postgresql` before proceeding.
+### YUM/DNF Manual Install (RHEL / CentOS / Fedora)
 
-## Packages
+```bash
+# Add repository
+curl -sSL https://github.com/muzimu217/OpenTenBase-packages/releases/latest/download/setup-rpm.sh | sudo bash
 
-| Package | Description |
-|---------|-------------|
-| `opentenbase` | Metapackage (depends on server + client) |
-| `opentenbase-server` | Server binaries (postgres, gtm, pg_ctl) + service driver |
-| `opentenbase-client` | Client utilities (psql, pg_dump) |
-| `opentenbase-contrib` | Contributed extensions (pgbench, oid2name, etc.) |
-| `libopentenbase-dev` | Development headers + pg_config |
-| `opentenbase-doc` | SGML documentation sources |
+# Install
+sudo dnf install opentenbase
+```
+
+---
+
+## Package Inventory
+
+| Package | Format | Description |
+|---------|--------|-------------|
+| `opentenbase` | DEB / RPM | Metapackage — depends on server + client |
+| `opentenbase-server` | DEB / RPM | Server binaries (postgres, gtm, pg_ctl) + service driver + cluster management |
+| `opentenbase-client` | DEB / RPM | Client utilities (psql, pg_dump, pg_restore, etc.) |
+| `opentenbase-contrib` | DEB / RPM | Extensions (pgbench, pg_stat_statements, postgres_fdw, etc.) |
+| `libopentenbase-dev` | DEB / RPM | Development headers + static libraries + pg_config |
+| `opentenbase-doc` | DEB / RPM | Documentation |
+
+---
+
+## Platform Support Matrix
+
+| Distribution | Version | DEB | RPM | x86_64 | ARM64 | Status |
+|-------------|---------|:---:|:---:|:------:|:-----:|--------|
+| Ubuntu | 20.04 (Focal) | ✅ | — | ✅ | ✅ | Verified |
+| Ubuntu | 22.04 (Jammy) | ✅ | — | ✅ | ✅ | Verified |
+| Ubuntu | 24.04 (Noble) | ✅ | — | ✅ | ✅ | Verified |
+| Debian | 11 (Bullseye) | ✅ | — | ✅ | ✅ | Verified |
+| Debian | 12 (Bookworm) | ✅ | — | ✅ | ✅ | Verified |
+| RHEL / CentOS | 8 | — | ✅ | ✅ | ✅ | Verified |
+| RHEL / CentOS | 9 | — | ✅ | ✅ | ✅ | Verified |
+| Rocky Linux | 8 / 9 | — | ✅ | ✅ | ✅ | Verified |
+| AlmaLinux | 8 / 9 | — | ✅ | ✅ | ✅ | Verified |
+| Fedora | 39+ | — | ✅ | ✅ | ✅ | Verified |
+| OpenEuler | 22.03+ | — | ✅ | ✅ | ✅ | Verified |
+
+---
 
 ## Quick Start
 
-### Initialize Cluster
-
 ```bash
-# Initialize GTM + Coordinator + Datanode
+# 1. Initialize cluster (GTM + Coordinator + Datanode)
 opentenbase-ctl init
-```
 
-### Start Cluster
-
-```bash
-# Start all nodes
+# 2. Start cluster
 opentenbase-ctl start
-```
 
-### Check Status
-
-```bash
-# Check cluster status
+# 3. Check cluster status
 opentenbase-ctl status
-```
 
-### Connect to Database
-
-```bash
-# Connect via psql (default database is template1)
+# 4. Connect to database
 opentenbase-psql -h 127.0.0.1 -p 5432 -U opentenbase -d template1
-```
 
-### Stop Cluster
-
-```bash
-# Stop all nodes
+# 5. Stop cluster
 opentenbase-ctl stop
 ```
 
-## Architecture
+### Version Switching
+
+```bash
+# List installed versions
+opentenbase-ctl versions
+
+# Switch to a specific version
+opentenbase-ctl switch 5.0
+
+# Switch to a development build
+opentenbase-ctl switch master-b612d77c
+```
+
+---
+
+## Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    OpenTenBase Packages                          │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│   ┌───────────────┐   ┌───────────────┐   ┌──────────────┐     │
+│   │  DEB Packages │   │  RPM Packages │   │   Docker     │     │
+│   │  Ubuntu/Debian│   │  RHEL/CentOS  │   │   Images     │     │
+│   │  (14 targets) │   │  (14 targets) │   │              │     │
+│   └───────┬───────┘   └───────┬───────┘   └──────┬───────┘     │
+│           │                   │                   │             │
+│           └───────────────────┼───────────────────┘             │
+│                               │                                 │
+│                     ┌─────────▼─────────┐                       │
+│                     │   GPG Signature   │                       │
+│                     └─────────┬─────────┘                       │
+│                               │                                 │
+│                     ┌─────────▼─────────┐                       │
+│                     │  Version Manager  │                       │
+│                     │  v5.0 / v2.6 / …  │                       │
+│                     └─────────┬─────────┘                       │
+│                               │                                 │
+│                     ┌─────────▼─────────┐                       │
+│                     │  GitHub Actions   │                       │
+│                     │  Auto Build & Ship│                       │
+│                     └───────────────────┘                       │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
 
 ### Installation Paths
 
-- **Main directory**: `/usr/lib/opentenbase/` (isolated from system PostgreSQL)
-- **Config directory**: `/etc/opentenbase/`
-- **Data directory**: `/var/lib/opentenbase/`
-- **Log directory**: `/var/log/opentenbase/`
-- **Management script**: `/usr/bin/opentenbase-ctl`
+| Path | Purpose |
+|------|---------|
+| `/usr/lib/opentenbase/<version>/` | Binaries and libraries (isolated from system PostgreSQL) |
+| `/etc/opentenbase/<version>/` | Configuration files |
+| `/var/lib/opentenbase/<version>/` | Data directory |
+| `/var/log/opentenbase/<version>/` | Log directory |
+| `/usr/bin/opentenbase-ctl` | Cluster management script |
 
-### Port Layout
-
-| Service | Port | Description |
-|---------|------|-------------|
-| GTM | 6666 | Global Transaction Manager |
-| Coordinator | 5432 | Coordinator node (external) |
-| Datanode | 15432 | Data node |
-| Coordinator Pooler | 6667 | Connection pool |
-| Datanode Pooler | 6668 | Connection pool |
-| Coordinator Forward | 6669 | Forward port |
-| Datanode Forward | 6670 | Forward port |
-
-### Startup Order
-
-```
-opentenbase-ctl start
-    ├── 1. start_gtm()           # Start GTM
-    ├── 2. start_coord()         # Start Coordinator
-    ├── 3. register_nodes()      # Register nodes to pgxc_node
-    │   ├── CREATE GTM NODE ...
-    │   ├── CREATE NODE coord1 ...
-    │   ├── CREATE NODE dn001 ...
-    │   ├── pgxc_pool_reload()
-    │   └── EXECUTE DIRECT ON (dn001) 'CREATE GTM NODE ...'
-    ├── 4. start_dn1()           # Start Datanode
-    └── 5. register_nodes()      # Final registration (ensure propagation)
-```
+---
 
 ## Build from Source
 
-### Install Build Dependencies
+### Docker Build (Recommended)
 
 ```bash
-apt install -y debhelper-compat bison flex perl gcc g++ make \
-    libreadline-dev zlib1g-dev libssl-dev libpam0g-dev \
-    libxml2-dev libldap2-dev libossp-uuid-dev uuid-dev \
-    libcurl4-openssl-dev liblz4-dev libzstd-dev \
-    libcli11-dev libpqxx-dev quilt libtool pkg-config
+git clone https://github.com/muzimu217/OpenTenBase-packages.git
+cd OpenTenBase-packages
+
+# Build for all distributions
+./scripts/build-multi.sh --all
+
+# Build for Ubuntu 24.04 only
+./scripts/build-multi.sh -d ubuntu -v 24.04
+
+# Build RPM only
+./scripts/build-multi.sh --rpm
 ```
 
-### Clone Source
+### Local Build
 
 ```bash
-git clone https://github.com/OpenTenBase/OpenTenBase.git
-cd OpenTenBase
+# Install build dependencies
+sudo apt install -y debhelper-compat bison flex perl libreadline-dev \
+    zlib1g-dev libssl-dev libxml2-dev libldap2-dev uuid-dev pkg-config
+
+# Build DEB packages
+./scripts/build-deb.sh
+
+# Build RPM packages
+./scripts/build-rpm.sh
 ```
 
-### Copy Packaging Files
+---
 
-```bash
-cp -r /path/to/debian/ ./
+## Directory Structure
+
+```
+OpenTenBase-packages/
+├── .github/workflows/       # CI/CD pipelines
+├── config/                  # Default configuration templates
+├── debian/                  # DEB packaging rules
+├── rpm/                     # RPM packaging rules
+├── docker/                  # Docker build environments
+├── scripts/                 # Build, release, signing scripts
+├── systemd/                 # systemd service units
+├── patches/                 # Source patches
+├── test/                    # Automated tests
+└── docs/                    # Documentation
 ```
 
-### Build Packages
-
-```bash
-# Full compile
-fakeroot debian/rules binary
-```
-
-### Build with Docker (Recommended)
-
-```bash
-# Clone repo and build for a specific distro
-git clone https://github.com/muzimu217/OpenTenBase-deb.git
-cd OpenTenBase-deb
-
-# Build for Ubuntu 20.04
-./test-build.sh -d ubuntu -v 20.04
-
-# Build all 5 distros
-./test-build.sh --all
-```
-
-## Deployment Modes
-
-| Mode | Components | Use Case | Status |
-|------|-----------|----------|--------|
-| Single Node | GTM + CN | Dev/Test | Verified |
-| Docker Multi-node | GTM + CN + N*DN | Test/Prod | Verified |
-| Multi-machine | GTM + CN + N*DN | Production | Verified |
-| Single-machine Multi-node | GTM + CN + DN | Not supported | Port conflict |
-
-> **Note**: Single-machine multi-node is not supported because CN and DN forward managers both bind to `127.0.0.1:6669`, causing port conflicts. Docker multi-node is unaffected (each container has its own IP). See [Deployment Guide](tutorials/07-deployment.md).
+---
 
 ## Known Limitations
 
-1. **License Issue**: OpenTenBase requires a valid license for write operations. Open-source version is read-only.
-2. **Single-machine Multi-node**: Not supported due to forward manager port conflict (CN and DN both bind to 127.0.0.1:6669). Use Docker or multi-machine deployment instead.
-3. **No systemd**: Some container environments don't have systemd, use `opentenbase-ctl` directly.
+| Limitation | Description |
+|-----------|-------------|
+| Write license | OpenTenBase open-source edition is read-only; write operations require a valid license |
+| Single-machine multi-node | Not supported due to forward manager port conflict; use Docker or multi-machine deployment |
 
-## Troubleshooting
-
-### Common Issues
-
-#### 1. Installation Failed: Dependency Issues
-
-If `sudo apt install ./*.deb` fails with missing dependencies like `libossp-uuid16` or `libpqxx-7.8t64`:
-
-```bash
-# Force install (these libraries are NOT actually needed at runtime)
-sudo dpkg --force-depends -i ./*.deb
-
-# Create missing plugin directory
-sudo mkdir -p /usr/lib/opentenbase/lib/postgresql
-```
-
-#### 2. Cannot Connect to Database
-
-```bash
-# Check cluster status
-opentenbase-ctl status
-
-# View logs
-tail -f /var/log/opentenbase/coord.log
-
-# Note: default database is template1, not postgres
-opentenbase-psql -h 127.0.0.1 -p 5432 -U opentenbase -d template1
-```
-
-#### 3. GTM Startup Failed
-
-```bash
-# Check GTM logs
-tail -f /var/log/opentenbase/gtm.log
-
-# Reinitialize cluster
-opentenbase-ctl stop
-opentenbase-ctl init
-opentenbase-ctl start
-```
-
-#### 4. Port Conflict
-
-```bash
-# Check port usage
-sudo netstat -tlnp | grep -E '(5432|6666|15432)'
-
-# Stop conflicting services
-sudo systemctl stop postgresql
-```
+---
 
 ## Contributing
 
-Welcome to contribute code, report issues, or suggest improvements!
-
-### Report Issues
-
-1. Visit [Issues](https://github.com/muzimu217/OpenTenBase-deb/issues)
-2. Click "New Issue"
-3. Describe the issue in detail, including:
-   - Ubuntu version
-   - Error messages
-   - Steps to reproduce
-
-### Submit Code
+Contributions are welcome — code, bug reports, and improvement suggestions!
 
 1. Fork this repository
-2. Create feature branch: `git checkout -b feature/your-feature`
-3. Commit changes: `git commit -m 'Add your feature'`
-4. Push branch: `git push origin feature/your-feature`
-5. Create Pull Request
+2. Create a feature branch: `git checkout -b feature/your-feature`
+3. Commit and push your changes
+4. Create a Pull Request
+
+See [Contributing Guide](CONTRIBUTING.md) for details.
+
+---
 
 ## License
 
-Same as OpenTenBase (Apache 2.0).
+Same as OpenTenBase — [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0).
 
-## Related Links
+---
 
-- **GitHub Repository**: https://github.com/muzimu217/OpenTenBase-deb
-- **Upstream Repository**: https://github.com/OpenTenBase/OpenTenBase
-- **OpenTenBase Documentation**: https://github.com/OpenTenBase/OpenTenBase/wiki
+## Links
+
+| Resource | Link |
+|----------|------|
+| **This project** | https://github.com/muzimu217/OpenTenBase-packages |
+| **Upstream repo** | https://github.com/OpenTenBase/OpenTenBase |
+| **OpenTenBase docs** | https://github.com/OpenTenBase/OpenTenBase/wiki |
+| **Issue tracker** | [Issues](https://github.com/muzimu217/OpenTenBase-packages/issues) |
 
 ---
 
 **Maintainer**: muzimu217
-**Last Updated**: 2026-05-23
+**Last Updated**: 2026-05-24

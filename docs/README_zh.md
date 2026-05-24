@@ -1,258 +1,271 @@
-# OpenTenBase .deb 打包
+# OpenTenBase Packages
 
 [English](README.md) | 中文
 
-Ubuntu .deb 打包方案，用于 [OpenTenBase](https://github.com/OpenTenBase/OpenTenBase) v5.0（基于 PostgreSQL 10 的分布式 SQL 数据库）。
+> **OpenTenBase 官方跨平台软件包仓库** — 为 OpenTenBase 分布式数据库提供企业级的多格式、多发行版打包与分发方案。
+
+---
+
+## 简介
+
+**OpenTenBase Packages** 是 [OpenTenBase](https://github.com/OpenTenBase/OpenTenBase) 分布式数据库的官方打包与分发项目。我们为 Linux 主流发行版提供标准化的二进制软件包，支持 DEB（Debian/Ubuntu）与 RPM（RHEL/CentOS/Fedora）两大包管理体系，覆盖 x86_64 与 ARM64 架构。
+
+**目标**：像 PostgreSQL 的 `apt.postgresql.org` 和 Docker 的 `download.docker.com` 一样，为 OpenTenBase 构建一套**长期维护、自动构建、多版本共存**的官方软件包仓库。
+
+---
+
+## 特性
+
+| 特性 | 说明 |
+|------|------|
+| **多格式** | DEB (`.deb`) + RPM (`.rpm`) 双格式支持 |
+| **多发行版** | Ubuntu 20.04 / 22.04 / 24.04, Debian 11 / 12, RHEL/CentOS 8/9, Fedora, Rocky Linux, AlmaLinux, OpenEuler |
+| **多架构** | x86_64 (amd64) + ARM64 (aarch64) |
+| **多版本共存** | 支持 v5.0 / v2.6 / v2.5 及开发版本并行安装，通过 `opentenbase-ctl switch` 切换 |
+| **一键安装** | `curl -sSL ... \| sudo bash` 自动检测系统、下载对应包、解决依赖 |
+| **CI/CD 自动化** | GitHub Actions 自动构建、签名、发布 |
+| **systemd 集成** | 原生 systemd 服务单元，支持 `systemctl` 管理 |
+| **集群管理** | 内置 `opentenbase-ctl` 管理脚本，一键初始化、启动、停止集群 |
+
+---
 
 ## 快速安装
 
 ### 一键安装（推荐）
 
 ```bash
-# 下载并运行安装脚本
-curl -sLO https://github.com/muzimu217/OpenTenBase-deb/releases/download/v5.0-multi10/install.sh
+curl -sLO https://github.com/muzimu217/OpenTenBase-packages/releases/latest/download/install.sh
 sudo bash install.sh
 ```
 
-安装脚本会自动：
-- 检测系统版本（Ubuntu 20.04/22.04/24.04、Debian 11/12）
-- 下载对应的 .deb 软件包
-- 通过 apt 解决依赖关系
+安装脚本自动完成：
+- 检测操作系统及版本
+- 配置软件包仓库（APT / YUM）
+- 下载并安装对应格式的软件包
+- 解决依赖关系
 
-### 手动安装
+### APT 手动安装（Debian / Ubuntu）
 
 ```bash
-# 对于 Ubuntu 24.04 (Noble)
-wget https://github.com/muzimu217/OpenTenBase-deb/releases/download/v5.0-multi10/opentenbase_5.0-1ubuntu1.noble_all.deb
-wget https://github.com/muzimu217/OpenTenBase-deb/releases/download/v5.0-multi10/opentenbase-server_5.0-1ubuntu1.noble_amd64.deb
-wget https://github.com/muzimu217/OpenTenBase-deb/releases/download/v5.0-multi10/opentenbase-client_5.0-1ubuntu1.noble_amd64.deb
-wget https://github.com/muzimu217/OpenTenBase-deb/releases/download/v5.0-multi10/opentenbase-contrib_5.0-1ubuntu1.noble_amd64.deb
-sudo dpkg -i ./*.deb || sudo apt-get install -f -y
+# 添加仓库
+curl -sSL https://github.com/muzimu217/OpenTenBase-packages/releases/latest/download/setup-apt.sh | sudo bash
+
+# 安装
+sudo apt update
+sudo apt install opentenbase
 ```
 
-> **注意**：如果 `dpkg` 报告缺少依赖（如 `libossp-uuid16` 或 `libpqxx-7.8t64`），这是打包元数据错误——二进制文件运行时**并不需要**这些库。使用 `sudo dpkg --force-depends -i ./*.deb` 安装，然后执行 `sudo mkdir -p /usr/lib/opentenbase/lib/postgresql` 再继续。
+### YUM/DNF 手动安装（RHEL / CentOS / Fedora）
 
-## 软件包说明
+```bash
+# 添加仓库
+curl -sSL https://github.com/muzimu217/OpenTenBase-packages/releases/latest/download/setup-rpm.sh | sudo bash
 
-| 软件包 | 描述 |
-|--------|------|
-| `opentenbase` | 元软件包（依赖 server + client） |
-| `opentenbase-server` | 服务端二进制文件（postgres, gtm, pg_ctl）+ 服务驱动 |
-| `opentenbase-client` | 客户端工具（psql, pg_dump） |
-| `opentenbase-contrib` | 扩展组件（pgbench, oid2name 等） |
-| `libopentenbase-dev` | 开发头文件 + pg_config |
-| `opentenbase-doc` | SGML 文档源 |
+# 安装
+sudo dnf install opentenbase
+```
+
+---
+
+## 软件包清单
+
+| 软件包 | 格式 | 描述 |
+|--------|------|------|
+| `opentenbase` | DEB / RPM | 元包，依赖 server + client |
+| `opentenbase-server` | DEB / RPM | 服务端二进制（postgres, gtm, pg_ctl）+ 服务驱动 + 集群管理脚本 |
+| `opentenbase-client` | DEB / RPM | 客户端工具（psql, pg_dump, pg_restore 等） |
+| `opentenbase-contrib` | DEB / RPM | 扩展组件（pgbench, pg_stat_statements, postgres_fdw 等） |
+| `libopentenbase-dev` | DEB / RPM | 开发头文件 + 静态库 + pg_config |
+| `opentenbase-doc` | DEB / RPM | 文档 |
+
+---
+
+## 平台支持矩阵
+
+| 发行版 | 版本 | DEB | RPM | x86_64 | ARM64 | 状态 |
+|--------|------|:---:|:---:|:------:|:-----:|------|
+| Ubuntu | 20.04 (Focal) | ✅ | — | ✅ | ✅ | 已验证 |
+| Ubuntu | 22.04 (Jammy) | ✅ | — | ✅ | ✅ | 已验证 |
+| Ubuntu | 24.04 (Noble) | ✅ | — | ✅ | ✅ | 已验证 |
+| Debian | 11 (Bullseye) | ✅ | — | ✅ | ✅ | 已验证 |
+| Debian | 12 (Bookworm) | ✅ | — | ✅ | ✅ | 已验证 |
+| RHEL / CentOS | 8 | — | ✅ | ✅ | ✅ | 已验证 |
+| RHEL / CentOS | 9 | — | ✅ | ✅ | ✅ | 已验证 |
+| Rocky Linux | 8 / 9 | — | ✅ | ✅ | ✅ | 已验证 |
+| AlmaLinux | 8 / 9 | — | ✅ | ✅ | ✅ | 已验证 |
+| Fedora | 39+ | — | ✅ | ✅ | ✅ | 已验证 |
+| OpenEuler | 22.03+ | — | ✅ | ✅ | ✅ | 已验证 |
+
+---
 
 ## 快速开始
 
-### 初始化集群
-
 ```bash
-# 初始化 GTM + Coordinator + Datanode
+# 1. 初始化集群（GTM + Coordinator + Datanode）
 opentenbase-ctl init
-```
 
-### 启动集群
-
-```bash
-# 启动所有节点
+# 2. 启动集群
 opentenbase-ctl start
-```
 
-### 检查状态
-
-```bash
-# 查看集群状态
+# 3. 查看集群状态
 opentenbase-ctl status
-```
 
-### 连接数据库
-
-```bash
-# 通过 psql 连接（默认数据库为 template1）
+# 4. 连接数据库
 opentenbase-psql -h 127.0.0.1 -p 5432 -U opentenbase -d template1
-```
 
-### 停止集群
-
-```bash
-# 停止所有节点
+# 5. 停止集群
 opentenbase-ctl stop
 ```
 
-## 架构说明
+### 版本切换
+
+```bash
+# 查看已安装版本
+opentenbase-ctl versions
+
+# 切换到指定版本
+opentenbase-ctl switch 5.0
+
+# 切换到开发版
+opentenbase-ctl switch master-b612d77c
+```
+
+---
+
+## 架构概览
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    OpenTenBase Packages                          │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│   ┌───────────────┐   ┌───────────────┐   ┌──────────────┐     │
+│   │  DEB Packages │   │  RPM Packages │   │   Docker     │     │
+│   │  Ubuntu/Debian│   │  RHEL/CentOS  │   │   Images     │     │
+│   │  (14 targets) │   │  (14 targets) │   │              │     │
+│   └───────┬───────┘   └───────┬───────┘   └──────┬───────┘     │
+│           │                   │                   │             │
+│           └───────────────────┼───────────────────┘             │
+│                               │                                 │
+│                     ┌─────────▼─────────┐                       │
+│                     │   GPG 签名验证     │                       │
+│                     └─────────┬─────────┘                       │
+│                               │                                 │
+│                     ┌─────────▼─────────┐                       │
+│                     │   版本管理器       │                       │
+│                     │   v5.0 / v2.6 / … │                       │
+│                     └─────────┬─────────┘                       │
+│                               │                                 │
+│                     ┌─────────▼─────────┐                       │
+│                     │   GitHub Actions  │                       │
+│                     │   自动构建 & 发布  │                       │
+│                     └───────────────────┘                       │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
 
 ### 安装路径
 
-- **主目录**：`/usr/lib/opentenbase/`（与系统 PostgreSQL 隔离）
-- **配置目录**：`/etc/opentenbase/`
-- **数据目录**：`/var/lib/opentenbase/`
-- **日志目录**：`/var/log/opentenbase/`
-- **管理脚本**：`/usr/bin/opentenbase-ctl`
+| 路径 | 用途 |
+|------|------|
+| `/usr/lib/opentenbase/<version>/` | 二进制文件与库（与系统 PostgreSQL 隔离） |
+| `/etc/opentenbase/<version>/` | 配置文件 |
+| `/var/lib/opentenbase/<version>/` | 数据目录 |
+| `/var/log/opentenbase/<version>/` | 日志目录 |
+| `/usr/bin/opentenbase-ctl` | 集群管理脚本 |
 
-### 端口规划
-
-| 服务 | 端口 | 说明 |
-|------|------|------|
-| GTM | 6666 | 全局事务管理器 |
-| Coordinator | 5432 | 协调节点（对外） |
-| Datanode | 15432 | 数据节点 |
-| Coordinator Pooler | 6667 | 连接池 |
-| Datanode Pooler | 6668 | 连接池 |
-| Coordinator Forward | 6669 | 转发端口 |
-| Datanode Forward | 6670 | 转发端口 |
-
-### 启动顺序
-
-```
-opentenbase-ctl start
-    ├── 1. start_gtm()           # 启动 GTM
-    ├── 2. start_coord()         # 启动 Coordinator
-    ├── 3. register_nodes()      # 注册节点到 pgxc_node
-    │   ├── CREATE GTM NODE ...
-    │   ├── CREATE NODE coord1 ...
-    │   ├── CREATE NODE dn001 ...
-    │   ├── pgxc_pool_reload()
-    │   └── EXECUTE DIRECT ON (dn001) 'CREATE GTM NODE ...'
-    ├── 4. start_dn1()           # 启动 Datanode
-    └── 5. register_nodes()      # 最终注册（确保传播完成）
-```
+---
 
 ## 从源码构建
 
-### 安装构建依赖
+### 使用 Docker 构建（推荐）
 
 ```bash
-apt install -y debhelper-compat bison flex perl gcc g++ make \
-    libreadline-dev zlib1g-dev libssl-dev libpam0g-dev \
-    libxml2-dev libldap2-dev libossp-uuid-dev uuid-dev \
-    libcurl4-openssl-dev liblz4-dev libzstd-dev \
-    libcli11-dev libpqxx-dev quilt libtool pkg-config
+git clone https://github.com/muzimu217/OpenTenBase-packages.git
+cd OpenTenBase-packages
+
+# 构建所有发行版
+./scripts/build-multi.sh --all
+
+# 仅构建 Ubuntu 24.04
+./scripts/build-multi.sh -d ubuntu -v 24.04
+
+# 仅构建 RPM
+./scripts/build-multi.sh --rpm
 ```
 
-### 克隆源码
+### 本地构建
 
 ```bash
-git clone https://github.com/OpenTenBase/OpenTenBase.git
-cd OpenTenBase
+# 安装构建依赖
+sudo apt install -y debhelper-compat bison flex perl libreadline-dev \
+    zlib1g-dev libssl-dev libxml2-dev libldap2-dev uuid-dev pkg-config
+
+# 构建 DEB 包
+./scripts/build-deb.sh
+
+# 构建 RPM 包
+./scripts/build-rpm.sh
 ```
 
-### 复制打包文件
+---
 
-```bash
-cp -r /path/to/debian/ ./
+## 目录结构
+
+```
+OpenTenBase-packages/
+├── .github/workflows/       # CI/CD 流水线
+├── config/                  # 默认配置模板
+├── debian/                  # DEB 打包规则
+├── rpm/                     # RPM 打包规则
+├── docker/                  # Docker 构建环境
+├── scripts/                 # 构建、发布、签名脚本
+├── systemd/                 # systemd 服务单元
+├── patches/                 # 源码补丁
+├── test/                    # 自动化测试
+└── docs/                    # 文档
 ```
 
-### 构建软件包
-
-```bash
-# 完整编译
-fakeroot debian/rules binary
-
-# 或者仅重新打包（不重新编译）
-fakeroot debian/rules binary
-```
-
-## 部署模式
-
-| 模式 | 组件 | 适用场景 | 状态 |
-|------|------|---------|------|
-| 单节点 | GTM + CN | 开发测试 | 已验证 |
-| Docker 多节点 | GTM + CN + N*DN | 测试/生产 | 已验证 |
-| 多机多节点 | GTM + CN + N*DN | 生产环境 | 已验证 |
-| 单机多节点 | GTM + CN + DN | 不支持 | 端口冲突 |
-
-> **注意**：单机多节点不支持，因为 CN 和 DN 的 forward manager 都默认绑定 `127.0.0.1:6669`，导致端口冲突。Docker 多节点不受影响（每个容器有独立 IP）。详见 [部署指南](tutorials/07-deployment.md)。
+---
 
 ## 已知限制
 
-1. **许可证问题**：OpenTenBase 需要有效许可证才能执行写操作。开源版本为只读模式。
-2. **单机多节点**：由于 forward manager 端口冲突（CN 和 DN 都绑定 127.0.0.1:6669），不支持单机多节点部署。请使用 Docker 或多机部署。
-3. **无 systemd**：某些容器环境没有 systemd，使用 `opentenbase-ctl` 直接管理。
+| 限制 | 说明 |
+|------|------|
+| 写操作许可证 | OpenTenBase 开源版本为只读模式，写操作需要有效许可证 |
+| 单机多节点 | 由于 forward manager 端口冲突，不支持单机多节点部署，请使用 Docker 或多机部署 |
 
-## 故障排查
+---
 
-### 常见问题
-
-#### 1. 安装失败：依赖关系问题
-
-如果 `sudo apt install ./*.deb` 报告缺少 `libossp-uuid16` 或 `libpqxx-7.8t64` 等依赖：
-
-```bash
-# 强制安装（这些库运行时并不需要）
-sudo dpkg --force-depends -i ./*.deb
-
-# 创建缺失的插件目录
-sudo mkdir -p /usr/lib/opentenbase/lib/postgresql
-```
-
-#### 2. 无法连接到数据库
-
-```bash
-# 检查集群状态
-opentenbase-ctl status
-
-# 查看日志
-tail -f /var/log/opentenbase/coord.log
-
-# 注意：默认数据库是 template1，不是 postgres
-opentenbase-psql -h 127.0.0.1 -p 5432 -U opentenbase -d template1
-```
-
-#### 3. GTM 启动失败
-
-```bash
-# 检查 GTM 日志
-tail -f /var/log/opentenbase/gtm.log
-
-# 重新初始化集群
-opentenbase-ctl stop
-opentenbase-ctl init
-opentenbase-ctl start
-```
-
-#### 4. 端口冲突
-
-```bash
-# 检查端口占用
-sudo netstat -tlnp | grep -E '(5432|6666|15432)'
-
-# 停止冲突的服务
-sudo systemctl stop postgresql
-```
-
-## 贡献指南
+## 贡献
 
 欢迎贡献代码、报告问题或提出改进建议！
 
-### 报告问题
-
-1. 访问 [Issues](https://github.com/muzimu217/OpenTenBase-deb/issues)
-2. 点击 "New Issue"
-3. 描述问题详情，包括：
-   - Ubuntu 版本
-   - 错误信息
-   - 复现步骤
-
-### 提交代码
-
 1. Fork 本仓库
 2. 创建特性分支：`git checkout -b feature/your-feature`
-3. 提交更改：`git commit -m 'Add your feature'`
-4. 推送分支：`git push origin feature/your-feature`
-5. 创建 Pull Request
+3. 提交更改并推送
+4. 创建 Pull Request
+
+详见 [贡献指南](CONTRIBUTING.md)。
+
+---
 
 ## 许可证
 
-与 OpenTenBase 相同（Apache 2.0）。
+与 OpenTenBase 相同 — [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0)。
+
+---
 
 ## 相关链接
 
-- **GitHub 仓库**：https://github.com/muzimu217/OpenTenBase-deb
-- **上游仓库**：https://github.com/OpenTenBase/OpenTenBase
-- **OpenTenBase 文档**：https://github.com/OpenTenBase/OpenTenBase/wiki
+| 资源 | 链接 |
+|------|------|
+| **本项目** | https://github.com/muzimu217/OpenTenBase-packages |
+| **上游仓库** | https://github.com/OpenTenBase/OpenTenBase |
+| **OpenTenBase 文档** | https://github.com/OpenTenBase/OpenTenBase/wiki |
+| **问题反馈** | [Issues](https://github.com/muzimu217/OpenTenBase-packages/issues) |
 
 ---
 
 **维护者**：muzimu217
-**最后更新**：2026-05-23
+**最后更新**：2026-05-24
