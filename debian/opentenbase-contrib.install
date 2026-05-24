@@ -1,5 +1,5 @@
-usr/lib/opentenbase/lib/postgresql/*.so
-usr/lib/opentenbase/share/postgresql/extension/*
-usr/lib/opentenbase/bin/oid2name
-usr/lib/opentenbase/bin/vacuumlo
-usr/lib/opentenbase/bin/pgbench
+usr/lib/opentenbase/5.0/lib/postgresql/*.so
+usr/lib/opentenbase/5.0/share/postgresql/extension/*
+usr/lib/opentenbase/5.0/bin/oid2name
+usr/lib/opentenbase/5.0/bin/vacuumlo
+usr/lib/opentenbase/5.0/bin/pgbench

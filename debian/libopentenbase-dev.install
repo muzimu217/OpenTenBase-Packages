@@ -1,5 +1,5 @@
-usr/include/opentenbase/*
-usr/lib/opentenbase/lib/*.a
-usr/lib/opentenbase/lib/pkgconfig/*
-usr/lib/opentenbase/bin/pg_config
+usr/include/opentenbase/5.0/*
+usr/lib/opentenbase/5.0/lib/*.a
+usr/lib/opentenbase/5.0/lib/pkgconfig/*
+usr/lib/opentenbase/5.0/bin/pg_config
 usr/bin/opentenbase_config
