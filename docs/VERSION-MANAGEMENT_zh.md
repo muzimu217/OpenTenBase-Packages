@@ -10,7 +10,7 @@ OpenTenBase 支持多个版本并行安装，类似于 PostgreSQL 管理 `postgr
 
 ```
 /usr/lib/opentenbase/
-├── 5.0/                    # v5.0 二进制文件和库（最新）
+├── 5.0/                    # v5.0 二进制文件和库（稳定版）
 │   ├── bin/
 │   ├── lib/
 │   └── share/
@@ -18,7 +18,11 @@ OpenTenBase 支持多个版本并行安装，类似于 PostgreSQL 管理 `postgr
 │   ├── bin/
 │   ├── lib/
 │   └── share/
-└── 2.5.0/                  # v2.5.0 二进制文件和库
+├── 2.5.0/                  # v2.5.0 二进制文件和库
+│   ├── bin/
+│   ├── lib/
+│   └── share/
+└── master-b612d77c/        # master 分支构建（版本号 = master-{commit_sha}）
     ├── bin/
     ├── lib/
     └── share/
@@ -26,9 +30,9 @@ OpenTenBase 支持多个版本并行安装，类似于 PostgreSQL 管理 `postgr
 /etc/opentenbase/
 ├── 5.0/                    # v5.0 配置
 │   ├── opentenbase.conf
-│   ├── gtm.conf.template
 │   └── ...
 ├── 2.6.0/                  # v2.6.0 配置
+├── master-b612d77c/        # master 分支配置
 └── current -> 5.0/         # 当前活跃版本符号链接
 
 /var/lib/opentenbase/
@@ -46,17 +50,44 @@ OpenTenBase 支持多个版本并行安装，类似于 PostgreSQL 管理 `postgr
 └── 2.6.0/                  # v2.6.0 日志
 ```
 
+## 支持的版本
+
+| 版本 | 类型 | 来源 | 说明 |
+|------|------|------|------|
+| `5.0` | 稳定版 | 预编译包 | 最新稳定版（2025-10-22） |
+| `2.6.0` | 历史版本 | 预编译包 | 上一个稳定版 |
+| `2.5.0` | 历史版本 | 预编译包 | 更早的稳定版 |
+| `master` | 开发版 | 从源码构建 | master 分支最新代码（比 v5.0 更新） |
+| `latest` | 别名 | 自动检测 | 自动选择最新的稳定版 tag |
+
 ## 快速开始
 
-### 安装指定版本
+### 安装稳定版（预编译包）
 
 ```bash
-# 安装 v5.0（默认，最新）
+# 安装 v5.0（默认，稳定版）
 curl -sSL https://github.com/muzimu217/OpenTenBase-deb/releases/latest/download/install.sh | sudo bash
 
-# 安装指定版本
-curl -sSL https://github.com/muzimu217/OpenTenBase-deb/releases/latest/download/install.sh | sudo bash -s -- --version 5.0
+# 安装指定稳定版
 curl -sSL https://github.com/muzimu217/OpenTenBase-deb/releases/latest/download/install.sh | sudo bash -s -- --version 2.6.0
+```
+
+### 从 Master 分支构建安装
+
+master 分支可能包含比最新稳定版更新的提交，适合测试或开发：
+
+```bash
+# 下载安装脚本
+curl -sSL -o /tmp/install.sh https://github.com/muzimu217/OpenTenBase-deb/releases/latest/download/install.sh
+
+# 从 master 分支构建并安装
+sudo bash /tmp/install.sh --version master --build-from-source
+```
+
+### 安装最新稳定版（自动检测）
+
+```bash
+curl -sSL https://github.com/muzimu217/OpenTenBase-deb/releases/latest/download/install.sh | sudo bash -s -- --version latest
 ```
 
 ### 列出已安装版本
@@ -141,8 +172,9 @@ OTB_CONFIG=/etc/opentenbase/2.6.0/opentenbase.conf opentenbase-ctl start
 | 命令 | 说明 |
 |------|------|
 | `opentenbase-switch-version` | 列出已安装版本 |
-| `opentenbase-switch-version 5.0` | 切换到 v5.0 |
+| `opentenbase-switch-version 5.0` | 切换到 v5.0（稳定版） |
 | `opentenbase-switch-version 2.6.0` | 切换到 v2.6.0 |
+| `opentenbase-switch-version master-abc12345` | 切换到 master 构建 |
 | `opentenbase-ctl init` | 初始化集群（当前版本） |
 | `opentenbase-ctl start` | 启动集群（当前版本） |
 | `opentenbase-ctl stop` | 停止集群（当前版本） |

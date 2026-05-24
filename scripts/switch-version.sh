@@ -157,9 +157,10 @@ Without arguments: list installed versions and show current active version.
 With version arg: switch to that version.
 
 Examples:
-  opentenbase-switch-version          # List versions
-  opentenbase-switch-version 5.0      # Switch to v5.0 (latest)
-  opentenbase-switch-version 2.6.0    # Switch to v2.6.0
+  opentenbase-switch-version              # List installed versions
+  opentenbase-switch-version 5.0          # Switch to v5.0 (stable)
+  opentenbase-switch-version 2.6.0        # Switch to v2.6.0
+  opentenbase-switch-version master-abc12345  # Switch to master build
 
 Version-specific paths:
   Binaries:  /usr/lib/opentenbase/<version>/

@@ -10,7 +10,7 @@ OpenTenBase supports installing multiple versions side-by-side, similar to how P
 
 ```
 /usr/lib/opentenbase/
-├── 5.0/                    # v5.0 binaries and libraries (latest)
+├── 5.0/                    # v5.0 binaries and libraries (stable)
 │   ├── bin/
 │   ├── lib/
 │   └── share/
@@ -18,7 +18,11 @@ OpenTenBase supports installing multiple versions side-by-side, similar to how P
 │   ├── bin/
 │   ├── lib/
 │   └── share/
-└── 2.5.0/                  # v2.5.0 binaries and libraries
+├── 2.5.0/                  # v2.5.0 binaries and libraries
+│   ├── bin/
+│   ├── lib/
+│   └── share/
+└── master-b612d77c/        # master branch build (version = master-{commit_sha})
     ├── bin/
     ├── lib/
     └── share/
@@ -26,9 +30,9 @@ OpenTenBase supports installing multiple versions side-by-side, similar to how P
 /etc/opentenbase/
 ├── 5.0/                    # v5.0 configuration
 │   ├── opentenbase.conf
-│   ├── gtm.conf.template
 │   └── ...
 ├── 2.6.0/                  # v2.6.0 configuration
+├── master-b612d77c/        # master branch configuration
 └── current -> 5.0/         # Active version symlink
 
 /var/lib/opentenbase/
@@ -46,17 +50,44 @@ OpenTenBase supports installing multiple versions side-by-side, similar to how P
 └── 2.6.0/                  # v2.6.0 logs
 ```
 
+## Supported Versions
+
+| Version | Type | Source | Description |
+|---------|------|--------|-------------|
+| `5.0` | Stable | Pre-built packages | Latest stable release (2025-10-22) |
+| `2.6.0` | Historical | Pre-built packages | Previous stable release |
+| `2.5.0` | Historical | Pre-built packages | Older stable release |
+| `master` | Development | Build from source | Latest master branch (newer than v5.0) |
+| `latest` | Alias | Auto-detect | Resolves to the newest stable tag |
+
 ## Quick Start
 
-### Install a Specific Version
+### Install a Stable Version (Pre-built)
 
 ```bash
-# Install v5.0 (default, latest)
+# Install v5.0 (default, stable)
 curl -sSL https://github.com/muzimu217/OpenTenBase-deb/releases/latest/download/install.sh | sudo bash
 
-# Install a specific version
-curl -sSL https://github.com/muzimu217/OpenTenBase-deb/releases/latest/download/install.sh | sudo bash -s -- --version 5.0
+# Install a specific stable version
 curl -sSL https://github.com/muzimu217/OpenTenBase-deb/releases/latest/download/install.sh | sudo bash -s -- --version 2.6.0
+```
+
+### Install from Master Branch (Build from Source)
+
+The master branch may contain newer commits than the latest stable tag. Use this for testing or development:
+
+```bash
+# Download installer
+curl -sSL -o /tmp/install.sh https://github.com/muzimu217/OpenTenBase-deb/releases/latest/download/install.sh
+
+# Build and install from master
+sudo bash /tmp/install.sh --version master --build-from-source
+```
+
+### Install Latest Stable (Auto-detect)
+
+```bash
+curl -sSL https://github.com/muzimu217/OpenTenBase-deb/releases/latest/download/install.sh | sudo bash -s -- --version latest
 ```
 
 ### List Installed Versions
@@ -141,8 +172,9 @@ OTB_CONFIG=/etc/opentenbase/2.6.0/opentenbase.conf opentenbase-ctl start
 | Command | Description |
 |---------|-------------|
 | `opentenbase-switch-version` | List installed versions |
-| `opentenbase-switch-version 5.0` | Switch to v5.0 |
+| `opentenbase-switch-version 5.0` | Switch to v5.0 (stable) |
 | `opentenbase-switch-version 2.6.0` | Switch to v2.6.0 |
+| `opentenbase-switch-version master-abc12345` | Switch to master build |
 | `opentenbase-ctl init` | Initialize cluster (current version) |
 | `opentenbase-ctl start` | Start cluster (current version) |
 | `opentenbase-ctl stop` | Stop cluster (current version) |
