@@ -293,7 +293,7 @@ CFLAGS="$CFLAGS -march=armv8-a"
 %endif
 export CFLAGS
 # Set LDFLAGS cleanly (RPM macros are sanitized by %undefine above)
-export LDFLAGS="-Wl,-rpath,%{otb_prefix}/lib"
+export LDFLAGS="-Wl,--allow-multiple-definition -Wl,-rpath,%{otb_prefix}/lib"
 
 # Add -latomic on Fedora (needed for 128-bit atomics: __sync_val_compare_and_swap_16)
 if [ -f /etc/fedora-release ]; then
