@@ -292,7 +292,9 @@ export LDFLAGS="-Wl,-rpath,%{otb_prefix}/lib"
 # Some distros (Fedora 40+) need -latomic for __sync_val_compare_and_swap_16
 cat > /tmp/test_atomic.c << 'EOFAT'
 #include <stdint.h>
-int main() { __int128 x = 0; __sync_val_compare_and_swap(&x, 0, 1); return 0; }
+volatile __int128 x = 0;
+void set_x(void) { __sync_val_compare_and_swap(&x, 0, 1); }
+int main() { set_x(); return 0; }
 EOFAT
 if ! gcc -o /tmp/test_atomic /tmp/test_atomic.c 2>/dev/null; then
     if gcc -o /tmp/test_atomic /tmp/test_atomic.c -latomic 2>/dev/null; then
