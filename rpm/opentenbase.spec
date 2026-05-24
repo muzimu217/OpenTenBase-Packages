@@ -398,6 +398,9 @@ fi
 make -j$(nproc) -C src/interfaces/libpq
 ( cd src/interfaces/libpq && for f in *.o; do echo "src/interfaces/libpq/$f"; done ) > src/interfaces/libpq/objfiles.txt
 
+# Fix flex lex.backup race: use rm -f so missing file doesn't fail
+sed -i 's/rm lex\.backup/rm -f lex.backup/g' src/Makefile.global
+
 make -j$(nproc)
 
 # Build contrib, but skip uuid-ossp (requires OSSP UUID not available on RPM distros)
