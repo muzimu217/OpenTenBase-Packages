@@ -42,10 +42,10 @@ test_packages_installed() {
     log_info "=== Test: Package Installation ==="
 
     local binaries=(
-        "/usr/lib/opentenbase/bin/postgres"
-        "/usr/lib/opentenbase/bin/psql"
-        "/usr/lib/opentenbase/bin/initdb"
-        "/usr/lib/opentenbase/bin/pg_ctl"
+        "/usr/lib/opentenbase/5.0/bin/postgres"
+        "/usr/lib/opentenbase/5.0/bin/psql"
+        "/usr/lib/opentenbase/5.0/bin/initdb"
+        "/usr/lib/opentenbase/5.0/bin/pg_ctl"
         "/usr/bin/opentenbase-ctl"
     )
 
@@ -65,11 +65,11 @@ test_config_files() {
     log_info "=== Test: Configuration Files ==="
 
     local configs=(
-        "/etc/opentenbase/opentenbase.conf"
-        "/etc/opentenbase/gtm.conf.template"
-        "/etc/opentenbase/postgresql.conf.coord.template"
-        "/etc/opentenbase/postgresql.conf.dn.template"
-        "/etc/opentenbase/pg_hba.conf.template"
+        "/etc/opentenbase/5.0/opentenbase.conf"
+        "/etc/opentenbase/5.0/gtm.conf.template"
+        "/etc/opentenbase/5.0/postgresql.conf.coord.template"
+        "/etc/opentenbase/5.0/postgresql.conf.dn.template"
+        "/etc/opentenbase/5.0/pg_hba.conf.template"
     )
 
     for conf in "${configs[@]}"; do
@@ -87,7 +87,7 @@ test_config_files() {
 test_libraries() {
     log_info "=== Test: Library Files ==="
 
-    local lib_dir="/usr/lib/opentenbase/lib"
+    local lib_dir="/usr/lib/opentenbase/5.0/lib"
 
     if [ -d "$lib_dir" ]; then
         log_pass "Library directory exists: $lib_dir"
@@ -159,7 +159,7 @@ test_sql_connectivity() {
     local connected=0
 
     for i in $(seq 1 $retries); do
-        if /usr/lib/opentenbase/bin/psql -h 127.0.0.1 -p 5432 -U opentenbase -d postgres -c "SELECT 1;" &>/dev/null; then
+        if /usr/lib/opentenbase/5.0/bin/psql -h 127.0.0.1 -p 5432 -U opentenbase -d postgres -c "SELECT 1;" &>/dev/null; then
             connected=1
             break
         fi
@@ -180,7 +180,7 @@ test_sql_connectivity() {
 test_sql_operations() {
     log_info "=== Test: Basic SQL Operations ==="
 
-    local psql="/usr/lib/opentenbase/bin/psql -h 127.0.0.1 -p 5432 -U opentenbase -d postgres"
+    local psql="/usr/lib/opentenbase/5.0/bin/psql -h 127.0.0.1 -p 5432 -U opentenbase -d postgres"
 
     # Test SELECT
     if $psql -c "SELECT version();" 2>&1 | grep -q "PostgreSQL"; then
