@@ -57,7 +57,6 @@ fi
 
 # Patch configure to use dynamic linking instead of hardcoded /usr/local/lib paths
 sed -i 's|/usr/local/lib/liblz4.a|-llz4|g' configure
-sed -i 's|/usr/local/lib/libzstd.a|-lzstd|g' configure
 
 # Check for real zstd-devel and provide comprehensive stub if missing
 # OpenTenBase unconditionally compiles zstd_compress.c and gtm_store.c
@@ -299,6 +298,8 @@ CONFIGURE_OPTS="--prefix=%{otb_prefix} \
 
 # Only enable zstd if real zstd-devel is installed (not stub)
 if [ "$ZSTD_FOUND" = "1" ]; then
+    # Patch configure to use dynamic linking for zstd
+    sed -i 's|/usr/local/lib/libzstd.a|-lzstd|g' configure
     CONFIGURE_OPTS="$CONFIGURE_OPTS --with-zstd"
     echo "NOTE: zstd-devel found, building with zstd support"
 else
@@ -307,6 +308,12 @@ else
 fi
 
 ./configure $CONFIGURE_OPTS
+
+# If zstd-devel is not available, remove -lzstd from linker flags
+# (configure may still add it even with --without-zstd due to stub header)
+if [ "$ZSTD_FOUND" = "0" ]; then
+    find . -name 'Makefile.global' -exec sed -i 's/-lzstd//g' {} +
+fi
 
 make -j$(nproc)
 
