@@ -114,6 +114,7 @@ jobs:
             /tmp/source/OpenTenBase
 
       - name: Build DEB packages
+        shell: bash
         env:
           OTB_VERSION: ${{ github.event.inputs.version || '5.0' }}
         run: |
