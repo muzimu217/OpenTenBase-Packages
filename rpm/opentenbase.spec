@@ -5,6 +5,8 @@ Summary:        OpenTenBase distributed database system
 License:        BSD
 URL:            https://github.com/OpenTenBase/OpenTenBase
 Source0:        opentenbase-%{version}-%{_arch}.tar.gz
+Source1:        opentenbase-ctl
+Source2:        pg_hba.conf.template
 
 %define otb_ver %{version}
 %define otb_prefix /usr/lib/opentenbase/%{otb_ver}
@@ -111,126 +113,11 @@ for f in %{buildroot}%{otb_prefix}/bin/*; do
 done
 
 # Install opentenbase-ctl management script
-cat > %{buildroot}/usr/bin/opentenbase-ctl << 'CTLSCRIPT'
-#!/bin/bash
-# opentenbase-ctl - management script for OpenTenBase
-# Usage: opentenbase-ctl {init|start|stop|restart|status|reload|psql [node]|logs [node]}
-set -e
-CONFIG="${OTB_CONFIG:-/etc/opentenbase/current/opentenbase.conf}"
-[ -r "$CONFIG" ] || { echo "ERROR: cannot read $CONFIG" >&2; exit 1; }
-. "$CONFIG"
-OTB_BIN="${OTB_HOME}/bin"
-TPL_DIR="$(dirname "$CONFIG")"
-run_as_otb() {
-    if [ "$(id -un)" = "$OTB_USER" ]; then
-        PATH="$OTB_BIN:$PATH" LD_LIBRARY_PATH="$OTB_HOME/lib:${LD_LIBRARY_PATH:-}" "$@"
-    else
-        runuser -u "$OTB_USER" -- env PATH="$OTB_BIN:/usr/bin:/bin" LD_LIBRARY_PATH="$OTB_HOME/lib" "$@"
-    fi
-}
-ensure_dirs() {
-    install -d -o "$OTB_USER" -g "$OTB_GROUP" -m 0750 /var/log/opentenbase
-    install -d -o "$OTB_USER" -g "$OTB_GROUP" -m 0700 /var/lib/opentenbase
-    install -d -o "$OTB_USER" -g "$OTB_GROUP" -m 0755 /var/run/opentenbase
-}
-cmd_init() {
-    ensure_dirs
-    local start_order="$START_ORDER"
-    for node in $start_order; do
-        local pgdata_var="${node^^}_PGDATA"
-        local pgdata="${!pgdata_var}"
-        [ -z "$pgdata" ] && continue
-        if [ ! -f "$pgdata/PG_VERSION" ]; then
-            echo "Initializing $node ($pgdata)..."
-            case "$node" in
-                gtm)
-                    run_as_otb "$OTB_BIN/initgtm" -Z gtm -D "$pgdata" --nodename="$node"
-                    ;;
-                coord*)
-                    run_as_otb "$OTB_BIN/initdb" --locale=C --encoding=UTF-8 -D "$pgdata" --nodename="$node"
-                    ;;
-                dn*)
-                    run_as_otb "$OTB_BIN/initdb" --locale=C --encoding=UTF-8 -D "$pgdata" --nodename="$node"
-                    ;;
-            esac
-        else
-            echo "$node already initialized ($pgdata)"
-        fi
-    done
-}
-cmd_start() {
-    ensure_dirs
-    local start_order="$START_ORDER"
-    for node in $start_order; do
-        local pgdata_var="${node^^}_PGDATA"
-        local port_var="${node^^}_PORT"
-        local log_var="${node^^}_LOG"
-        local pgdata="${!pgdata_var}"
-        local port="${!port_var}"
-        local log="${!log_var}"
-        [ -z "$pgdata" ] && continue
-        case "$node" in
-            gtm)
-                echo "Starting GTM ($pgdata)..."
-                run_as_otb "$OTB_BIN/gtm_ctl" -Z gtm -D "$pgdata" -l "$log" start
-                ;;
-            coord*)
-                echo "Starting coordinator $node ($pgdata)..."
-                run_as_otb "$OTB_BIN/pg_ctl" -Z coordinator -D "$pgdata" -l "$log" -o "-p $port" start
-                ;;
-            dn*)
-                echo "Starting datanode $node ($pgdata)..."
-                run_as_otb "$OTB_BIN/pg_ctl" -Z datanode -D "$pgdata" -l "$log" -o "-p $port" start
-                ;;
-        esac
-    done
-}
-cmd_stop() {
-    local stop_order="$STOP_ORDER"
-    for node in $stop_order; do
-        local pgdata_var="${node^^}_PGDATA"
-        local pgdata="${!pgdata_var}"
-        [ -z "$pgdata" ] && continue
-        case "$node" in
-            gtm)
-                echo "Stopping GTM..."
-                run_as_otb "$OTB_BIN/gtm_ctl" -Z gtm -D "$pgdata" stop 2>/dev/null || true
-                ;;
-            coord*)
-                echo "Stopping coordinator $node..."
-                run_as_otb "$OTB_BIN/pg_ctl" -Z coordinator -D "$pgdata" stop 2>/dev/null || true
-                ;;
-            dn*)
-                echo "Stopping datanode $node..."
-                run_as_otb "$OTB_BIN/pg_ctl" -Z datanode -D "$pgdata" stop 2>/dev/null || true
-                ;;
-        esac
-    done
-}
-cmd_status() {
-    local start_order="$START_ORDER"
-    for node in $start_order; do
-        local pgdata_var="${node^^}_PGDATA"
-        local pgdata="${!pgdata_var}"
-        [ -z "$pgdata" ] && continue
-        case "$node" in
-            gtm) run_as_otb "$OTB_BIN/gtm_ctl" -Z gtm -D "$pgdata" status 2>/dev/null && echo "$node: running" || echo "$node: stopped" ;;
-            coord*) run_as_otb "$OTB_BIN/pg_ctl" -Z coordinator -D "$pgdata" status 2>/dev/null && echo "$node: running" || echo "$node: stopped" ;;
-            dn*) run_as_otb "$OTB_BIN/pg_ctl" -Z datanode -D "$pgdata" status 2>/dev/null && echo "$node: running" || echo "$node: stopped" ;;
-        esac
-    done
-}
-case "${1:-}" in
-    init) cmd_init ;;
-    start) cmd_start ;;
-    stop) cmd_stop ;;
-    restart) cmd_stop; cmd_start ;;
-    status) cmd_status ;;
-    -h|--help) echo "Usage: opentenbase-ctl {init|start|stop|restart|status}" ;;
-    *) echo "Usage: opentenbase-ctl {init|start|stop|restart|status}"; exit 1 ;;
-esac
-CTLSCRIPT
-chmod 755 %{buildroot}/usr/bin/opentenbase-ctl
+install -m 755 %{SOURCE1} %{buildroot}/usr/bin/opentenbase-ctl
+
+# Install pg_hba.conf template
+mkdir -p %{buildroot}/etc/opentenbase/%{otb_ver}
+install -m 644 %{SOURCE2} %{buildroot}/etc/opentenbase/%{otb_ver}/pg_hba.conf.template
 
 # Install switch-version script
 cat > %{buildroot}/usr/bin/opentenbase-switch-version << 'SWITCHSCRIPT'
@@ -357,6 +244,7 @@ CONF
 %dir /var/log/opentenbase/%{otb_ver}
 %dir /var/run/opentenbase
 %config(noreplace) /etc/opentenbase/%{otb_ver}/opentenbase.conf
+/etc/opentenbase/%{otb_ver}/pg_hba.conf.template
 
 %post
 ldconfig

@@ -77,6 +77,17 @@ mkdir -p "$RPMBUILD_DIR"/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
 TARBALL_NAME="opentenbase-${OTB_VERSION}-${ARCH}.tar.gz"
 cp "$TARBALL" "$RPMBUILD_DIR/SOURCES/${TARBALL_NAME}"
 
+# Copy additional sources (opentenbase-ctl script and pg_hba template)
+for f in opentenbase-ctl pg_hba.conf.template; do
+    if [ -f "$SCRIPT_DIR/../config/$f" ]; then
+        cp "$SCRIPT_DIR/../config/$f" "$RPMBUILD_DIR/SOURCES/"
+    elif [ -f "$SCRIPT_DIR/$f" ]; then
+        cp "$SCRIPT_DIR/$f" "$RPMBUILD_DIR/SOURCES/"
+    elif [ -f "$f" ]; then
+        cp "$f" "$RPMBUILD_DIR/SOURCES/"
+    fi
+done
+
 # Copy spec file and set version
 cp "$SCRIPT_DIR/opentenbase.spec" "$RPMBUILD_DIR/SPECS/"
 
