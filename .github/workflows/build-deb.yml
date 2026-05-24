@@ -109,8 +109,17 @@ jobs:
         run: |
           cd /tmp/source/OpenTenBase
           cp -r "$GITHUB_WORKSPACE/opentenbase-pkg/debian/" ./debian/
-          cp -r "$GITHUB_WORKSPACE/opentenbase-pkg/config/" ./config/ 2>/dev/null || true
-          cp -r "$GITHUB_WORKSPACE/opentenbase-pkg/scripts/" ./scripts/ 2>/dev/null || true
+          # Copy config and scripts from packaging repo (merge into existing dirs)
+          for f in opentenbase-ctl opentenbase.conf gtm.conf.template pg_hba.conf.template postgresql.conf.coord.template postgresql.conf.dn.template; do
+            if [ -f "$GITHUB_WORKSPACE/opentenbase-pkg/config/$f" ]; then
+              cp "$GITHUB_WORKSPACE/opentenbase-pkg/config/$f" ./config/
+            fi
+          done
+          if [ -d "$GITHUB_WORKSPACE/opentenbase-pkg/scripts" ]; then
+            mkdir -p ./scripts
+            cp -r "$GITHUB_WORKSPACE/opentenbase-pkg/scripts/"* ./scripts/ 2>/dev/null || true
+          fi
+          ls -la config/opentenbase-ctl 2>&1 || echo "WARNING: config/opentenbase-ctl not found"
           # Override OTB_VERSION in debian/rules if workflow_dispatch provides a version
           if [ -n "$OTB_VERSION" ] && [ "$OTB_VERSION" != "5.0" ]; then
             sed -i "s/^OTB_VERSION := .*/OTB_VERSION := $OTB_VERSION/" debian/rules
