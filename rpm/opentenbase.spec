@@ -351,9 +351,21 @@ export CPPFLAGS=""
     echo "LDFLAGS=$LDFLAGS"
     echo "LIBS=$LIBS"
     echo "CPPFLAGS=$CPPFLAGS"
+    echo "CC=$CC"
+    echo "GCC version: $(gcc --version 2>&1 | head -1)"
+    # Try to reproduce the exact configure compiler test
+    echo "=== Reproducing configure compiler test ==="
+    echo 'int main() { return 0; }' > conftest.c
+    echo "Test 1: gcc conftest.c \$CFLAGS \$LDFLAGS \$LIBS"
+    gcc conftest.c $CFLAGS $LDFLAGS $LIBS 2>&1 || echo "FAILED"
+    echo "Test 2: gcc conftest.c \$CFLAGS \$LDFLAGS"
+    gcc conftest.c $CFLAGS $LDFLAGS 2>&1 || echo "FAILED"
+    echo "Test 3: gcc conftest.c (no flags)"
+    gcc conftest.c 2>&1 || echo "FAILED"
+    rm -f conftest.c a.out
     if [ -f config.log ]; then
-        echo "=== Last 50 lines of config.log ==="
-        tail -50 config.log
+        echo "=== Compiler test section from config.log ==="
+        grep -A 30 "checking whether the C compiler works" config.log | head -50
     fi
     exit 1
 }
