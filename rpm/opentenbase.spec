@@ -365,7 +365,9 @@ export CPPFLAGS=""
     rm -f conftest.c a.out
     if [ -f config.log ]; then
         echo "=== Compiler test section from config.log ==="
-        grep -A 30 "checking whether the C compiler works" config.log | head -50
+        grep -A 50 "checking whether the C compiler works" config.log | head -80
+        echo "=== Full configure invocation from config.log ==="
+        grep "^\$" config.log | head -10
     fi
     exit 1
 }
