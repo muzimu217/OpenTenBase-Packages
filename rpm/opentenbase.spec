@@ -57,8 +57,38 @@ fi
 
 # Patch configure to use dynamic linking instead of hardcoded /usr/local/lib paths
 sed -i 's|/usr/local/lib/liblz4.a|-llz4|g' configure
-# Only patch zstd if zstd-devel is available
-if [ -f /usr/include/zstd.h ]; then
+
+# If zstd-devel is not installed, create stub headers and library symlink
+# so configure can pass its zstd detection check
+if [ ! -f /usr/include/zstd.h ]; then
+    mkdir -p /usr/include
+    cat > /usr/include/zstd.h << 'ZSTD_STUB'
+/* Stub zstd.h for builds without zstd-devel */
+#ifndef ZSTD_H_STUB
+#define ZSTD_H_STUB
+#include <stddef.h>
+typedef enum { ZSTD_fast=1, ZSTD_dfast=2, ZSTD_greedy=3, ZSTD_lazy=4, ZSTD_lazy2=5, ZSTD_btlazy2=6, ZSTD_btopt=7, ZSTD_btultra=8 } ZSTD_strategy;
+typedef struct ZSTD_CCtx_s ZSTD_CCtx;
+static inline ZSTD_CCtx* ZSTD_createCCtx(void) { return (ZSTD_CCtx*)0; }
+static inline size_t ZSTD_freeCCtx(ZSTD_CCtx* c) { (void)c; return 0; }
+static inline size_t ZSTD_compress(void* d, size_t ds, const void* s, size_t ss, int l) { (void)d; (void)ds; (void)s; (void)ss; (void)l; return 0; }
+static inline size_t ZSTD_compressBound(size_t s) { (void)s; return 0; }
+static inline unsigned ZSTD_isError(size_t c) { (void)c; return 1; }
+static inline const char* ZSTD_getErrorName(size_t c) { (void)c; return "zstd not available"; }
+static inline int ZSTD_maxCLevel(void) { return 0; }
+static inline size_t ZSTD_CCtx_setParameter(ZSTD_CCtx* c, int p, int v) { (void)c; (void)p; (void)v; return 0; }
+static inline size_t ZSTD_CCtx_setPledgedSrcSize(ZSTD_CCtx* c, size_t s) { (void)c; (void)s; return 0; }
+static inline size_t ZSTD_compress2(ZSTD_CCtx* c, void* d, size_t ds, const void* s, size_t ss) { (void)c; (void)d; (void)ds; (void)s; (void)ss; return 0; }
+#define ZSTD_CLEVEL_DEFAULT 3
+#define ZSTD_e_continue 0
+#define ZSTD_e_end 1
+#endif
+ZSTD_STUB
+    # Create libzstd.so symlink to libzstd.so.1 if it exists
+    if [ -f /usr/lib64/libzstd.so.1 ] && [ ! -f /usr/lib64/libzstd.so ]; then
+        ln -s libzstd.so.1 /usr/lib64/libzstd.so
+    fi
+    # Also patch configure to use -lzstd instead of static lib
     sed -i 's|/usr/local/lib/libzstd.a|-lzstd|g' configure
 fi
 
@@ -87,35 +117,12 @@ CONFIGURE_OPTS="--prefix=%{otb_prefix} \
     --with-libxml \
     --with-lz4"
 
-# Optional: zstd support (requires zstd-devel with headers)
+# Optional: zstd support (zstd-devel may not be available in all repos)
 if [ -f /usr/include/zstd.h ] && pkg-config --exists libzstd 2>/dev/null; then
     CONFIGURE_OPTS="$CONFIGURE_OPTS --with-zstd"
+    echo "NOTE: zstd-devel found, building with zstd support"
 else
-    echo "NOTE: zstd-devel not found, building without zstd support"
-    # Create stub zstd.h to prevent compile errors in source code
-    mkdir -p /usr/include
-    cat > /usr/include/zstd.h << 'ZSTD_STUB'
-/* Stub zstd.h for builds without zstd-devel */
-#ifndef ZSTD_H_STUB
-#define ZSTD_H_STUB
-#include <stddef.h>
-typedef enum { ZSTD_fast=1, ZSTD_dfast=2, ZSTD_greedy=3, ZSTD_lazy=4, ZSTD_lazy2=5, ZSTD_btlazy2=6, ZSTD_btopt=7, ZSTD_btultra=8 } ZSTD_strategy;
-typedef struct ZSTD_CCtx_s ZSTD_CCtx;
-static inline ZSTD_CCtx* ZSTD_createCCtx(void) { return (ZSTD_CCtx*)0; }
-static inline size_t ZSTD_freeCCtx(ZSTD_CCtx* c) { (void)c; return 0; }
-static inline size_t ZSTD_compress(void* d, size_t ds, const void* s, size_t ss, int l) { (void)d; (void)ds; (void)s; (void)ss; (void)l; return 0; }
-static inline size_t ZSTD_compressBound(size_t s) { (void)s; return 0; }
-static inline unsigned ZSTD_isError(size_t c) { (void)c; return 1; }
-static inline const char* ZSTD_getErrorName(size_t c) { (void)c; return "zstd not available"; }
-static inline int ZSTD_maxCLevel(void) { return 0; }
-static inline size_t ZSTD_CCtx_setParameter(ZSTD_CCtx* c, int p, int v) { (void)c; (void)p; (void)v; return 0; }
-static inline size_t ZSTD_CCtx_setPledgedSrcSize(ZSTD_CCtx* c, size_t s) { (void)c; (void)s; return 0; }
-static inline size_t ZSTD_compress2(ZSTD_CCtx* c, void* d, size_t ds, const void* s, size_t ss) { (void)c; (void)d; (void)ds; (void)s; (void)ss; return 0; }
-#define ZSTD_CLEVEL_DEFAULT 3
-#define ZSTD_e_continue 0
-#define ZSTD_e_end 1
-#endif
-ZSTD_STUB
+    echo "NOTE: zstd-devel not found, building with stub zstd support"
 fi
 
 ./configure $CONFIGURE_OPTS
