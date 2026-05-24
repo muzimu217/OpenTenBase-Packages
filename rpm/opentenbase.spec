@@ -398,8 +398,9 @@ fi
 make -j$(nproc) -C src/interfaces/libpq
 ( cd src/interfaces/libpq && for f in *.o; do echo "src/interfaces/libpq/$f"; done ) > src/interfaces/libpq/objfiles.txt
 
-# Fix flex lex.backup race: use rm -f so missing file doesn't fail
-sed -i 's/rm lex\.backup/rm -f lex.backup/g' src/Makefile.global
+# Fix flex lex.backup race: replace the wc -l check + rm with simple rm -f
+# The original recipe fails when parallel flex removes lex.backup before wc reads it
+sed -i 's/if \[ `wc -l <lex\.backup` -eq 1 \]; then rm lex\.backup; else echo "Scanner requires backup; see lex\.backup\." 1>\&2; exit 1; fi/rm -f lex.backup/' src/Makefile.global
 
 make -j$(nproc)
 

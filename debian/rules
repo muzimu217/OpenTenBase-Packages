@@ -54,8 +54,9 @@ override_dh_auto_configure:
 	sed -i 's/^LIBS = \(.*\)/LIBS = \1 -Wl,--no-as-needed -latomic -Wl,--as-needed/' src/Makefile.global
 
 override_dh_auto_build:
-	# Fix flex lex.backup race: use rm -f so missing file doesn't fail
-	sed -i 's/rm lex\.backup/rm -f lex.backup/g' src/Makefile.global
+	# Fix flex lex.backup race: replace the wc -l check + rm with simple rm -f
+	# The original recipe fails when parallel flex removes lex.backup before wc reads it
+	sed -i 's/if \[ `wc -l <lex\.backup` -eq 1 \]; then rm lex\.backup; else echo "Scanner requires backup; see lex\.backup\." 1>\&2; exit 1; fi/rm -f lex.backup/' src/Makefile.global
 	# Pre-build libpq and generate objfiles.txt (race condition fix)
 	# libpq's Makefile has 'all: all-lib' but doesn't generate objfiles.txt.
 	# The postgres binary needs src/interfaces/libpq/objfiles.txt to link against libpq.
