@@ -288,10 +288,12 @@ CFLAGS="$CFLAGS -march=armv8-a"
 export CFLAGS
 export LDFLAGS="-Wl,-rpath,%{otb_prefix}/lib"
 
-# Add -latomic if libatomic.so is available (needed for 128-bit atomics on some distros)
-if ldconfig -p 2>/dev/null | grep -q 'libatomic\.so'; then
+# Add -latomic if available (needed for 128-bit atomics on some distros)
+if { [ -f /usr/lib64/libatomic.so ] || [ -f /usr/lib/libatomic.so ] || ldconfig -p 2>/dev/null | grep -q 'libatomic\.so'; }; then
     export LDFLAGS="$LDFLAGS -latomic"
     echo "NOTE: libatomic found, adding -latomic to LDFLAGS"
+else
+    echo "NOTE: libatomic not found, 128-bit atomics may fail"
 fi
 
 CONFIGURE_OPTS="--prefix=%{otb_prefix} \
