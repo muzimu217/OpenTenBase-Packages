@@ -197,12 +197,12 @@ jobs:
 
           COPY packages/*.deb /tmp/debs/
           RUN dpkg --force-depends -i /tmp/debs/*.deb
-          RUN mkdir -p /usr/lib/opentenbase/lib/postgresql
+          RUN mkdir -p /usr/lib/opentenbase/5.0/lib/postgresql
           RUN ldconfig || true
           # Ensure opentenbase user exists
           RUN id opentenbase 2>/dev/null || (addgroup --system opentenbase && adduser --system --ingroup opentenbase --home /var/lib/opentenbase --shell /bin/bash opentenbase)
-          RUN chown -R opentenbase:opentenbase /var/lib/opentenbase /var/log/opentenbase 2>/dev/null || true
-          RUN mkdir -p /var/run/opentenbase && chown opentenbase:opentenbase /var/run/opentenbase
+          RUN mkdir -p /var/lib/opentenbase/5.0 /var/log/opentenbase/5.0 /var/run/opentenbase
+          RUN chown -R opentenbase:opentenbase /var/lib/opentenbase /var/log/opentenbase /var/run/opentenbase 2>/dev/null || true
 
           COPY test/smoke-test.sh /test/
           RUN chmod +x /test/smoke-test.sh
@@ -216,9 +216,9 @@ jobs:
             docker run --rm --cap-add SYS_PTRACE opentenbase-test:${{ matrix.codename }} bash -c "
               /test/smoke-test.sh 2>&1 || true
               echo '=== GTM Log ==='
-              cat /var/log/opentenbase/gtm.log 2>/dev/null || echo 'No GTM log found'
+              cat /var/log/opentenbase/5.0/gtm.log 2>/dev/null || echo 'No GTM log found'
               echo '=== GTM Config ==='
-              cat /var/lib/opentenbase/gtm/gtm.conf 2>/dev/null || echo 'No GTM config found'
+              cat /var/lib/opentenbase/5.0/gtm/gtm.conf 2>/dev/null || echo 'No GTM config found'
             "
             exit 1
           }

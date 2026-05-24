@@ -59,15 +59,46 @@ jobs:
 
       - name: Run smoke test
         run: |
-          docker run --rm \
-            -v $(pwd)/debs:/debs:ro \
-            -v $(pwd)/test:/test:ro \
-            ${{ matrix.container }} \
-            bash -c "
-              apt-get update -qq && apt-get install -y -qq sudo curl >/dev/null 2>&1
-              cd /debs && dpkg -i *.deb 2>/dev/null || apt-get install -f -y -qq
-              bash /test/smoke-test.sh
+          cat > Dockerfile.test << EOF
+          FROM ${{ matrix.container }}
+          ENV DEBIAN_FRONTEND=noninteractive
+
+          RUN apt-get update && apt-get install -y \
+              sudo procps libatomic1 adduser \
+              libxml2 libreadline8 \
+              libpam0g liblz4-1 libzstd1 libcurl4 \
+              libsasl2-2 \
+              && (apt-get install -y libssl1.1 2>/dev/null || apt-get install -y libssl3 2>/dev/null || true) \
+              && (apt-get install -y libldap-2.4-2 2>/dev/null || apt-get install -y libldap-2.5-0 2>/dev/null || apt-get install -y libldap-common 2>/dev/null || true) \
+              && rm -rf /var/lib/apt/lists/*
+
+          COPY debs/*.deb /tmp/debs/
+          RUN dpkg --force-depends -i /tmp/debs/*.deb
+          RUN mkdir -p /usr/lib/opentenbase/5.0/lib/postgresql
+          RUN ldconfig || true
+          # Ensure opentenbase user exists
+          RUN id opentenbase 2>/dev/null || (addgroup --system opentenbase && adduser --system --ingroup opentenbase --home /var/lib/opentenbase --shell /bin/bash opentenbase)
+          RUN mkdir -p /var/lib/opentenbase/5.0 /var/log/opentenbase/5.0 /var/run/opentenbase
+          RUN chown -R opentenbase:opentenbase /var/lib/opentenbase /var/log/opentenbase /var/run/opentenbase 2>/dev/null || true
+
+          COPY test/smoke-test.sh /test/
+          RUN chmod +x /test/smoke-test.sh
+
+          CMD ["/test/smoke-test.sh"]
+          EOF
+
+          docker build -f Dockerfile.test -t opentenbase-test:${{ matrix.distro }} .
+          docker run --rm --cap-add SYS_PTRACE opentenbase-test:${{ matrix.distro }} || {
+            echo "=== Smoke test failed, checking GTM log ==="
+            docker run --rm --cap-add SYS_PTRACE opentenbase-test:${{ matrix.distro }} bash -c "
+              /test/smoke-test.sh 2>&1 || true
+              echo '=== GTM Log ==='
+              cat /var/log/opentenbase/5.0/gtm.log 2>/dev/null || echo 'No GTM log found'
+              echo '=== GTM Config ==='
+              cat /var/lib/opentenbase/5.0/gtm/gtm.conf 2>/dev/null || echo 'No GTM config found'
             "
+            exit 1
+          }
 
   # ============================================================
   # Stage 3: Generate release notes and publish
