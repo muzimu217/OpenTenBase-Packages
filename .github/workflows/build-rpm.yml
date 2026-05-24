@@ -95,33 +95,45 @@ jobs:
         with:
           platforms: linux/${{ matrix.arch }}
 
-      - name: Enable additional repos
+      - name: Enable additional repos and install deps
         run: |
-          # Enable CRB/PowerTools for zstd-devel, libssh2-devel, etc.
-          for repo in crb powertools; do
-            if dnf repolist --all 2>/dev/null | grep -qi "$repo"; then
-              dnf config-manager --set-enabled "$repo" 2>/dev/null || \
-              dnf config-manager --set-enabled "$(dnf repolist --all 2>/dev/null | grep -i "$repo" | awk '{print $1}' | head -1)" 2>/dev/null || true
-            fi
-          done
           # CentOS Stream 8 EOL fix: use vault mirrors
           if grep -q 'CentOS Stream release 8' /etc/redhat-release 2>/dev/null; then
             sed -i 's|mirrorlist=|#mirrorlist=|g' /etc/yum.repos.d/CentOS-Stream-*.repo
             sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-Stream-*.repo
           fi
 
-      - name: Install build dependencies
-        run: |
-          # Core deps (always available)
+          # Enable CRB/PowerTools repos (needed for zstd-devel, libssh2-devel)
+          dnf install -y dnf-plugins-core 2>/dev/null || true
+          for repo in crb powertools; do
+            dnf config-manager --set-enabled "$repo" 2>/dev/null || true
+          done
+
+          # Also try adding CRB repo directly for Rocky/Alma 9
+          if [ -f /etc/rocky-release ] || [ -f /etc/almalinux-release ]; then
+            REL=$(rpm -q --queryformat '%{VERSION}' -f /etc/redhat-release 2>/dev/null | cut -d. -f1)
+            if [ "$REL" = "9" ]; then
+              cat > /etc/yum.repos.d/crb.repo << 'REPO'
+[crb]
+name=CRB
+baseurl=https://dl.rockylinux.org/pub/rocky/9/CRB/x86_64/os/
+enabled=1
+gpgcheck=0
+REPO
+            fi
+          fi
+
+          # Install core build deps
           dnf install -y \
             gcc gcc-c++ make bison flex perl \
             readline-devel zlib-devel openssl-devel pam-devel \
             libxml2-devel openldap-devel libuuid-devel \
             libcurl-devel lz4-devel \
             pkg-config libtool rpm-build rpmlint git
-          # Optional deps (may be in CRB/PowerTools or unavailable)
-          dnf install -y --enablerepo='*' zstd-devel 2>/dev/null || true
-          dnf install -y --enablerepo='*' libssh2-devel 2>/dev/null || true
+
+          # Install optional deps (zstd-devel may be in CRB)
+          dnf install -y zstd-devel 2>/dev/null || true
+          dnf install -y libssh2-devel 2>/dev/null || true
 
       - name: Checkout source
         uses: actions/checkout@v4
