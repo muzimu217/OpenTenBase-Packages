@@ -283,6 +283,9 @@ static inline size_t ZSTD_freeDDict(ZSTD_DDict* ddict) { (void)ddict; return 0; 
 ZSTD_STUB
 fi
 
+# Clear all RPM-injected compiler flags from environment
+unset CFLAGS CXXFLAGS LDFLAGS CPPFLAGS
+
 # Architecture flags
 CFLAGS="-O2 -g -DNOLIC -Wno-error=incompatible-pointer-types -Wno-error=implicit-function-declaration -Wno-error=int-conversion -Wno-incompatible-pointer-types"
 %ifarch x86_64
