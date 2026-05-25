@@ -10,7 +10,7 @@ export DEB_LDFLAGS_MAINT_APPEND := -Wl,--allow-multiple-definition -Wl,-rpath,/u
 
 # Force system libraries (avoid conda paths)
 export PATH := /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-export PKG_CONFIG_PATH := /usr/lib/x86_64-linux-gnu/pkgconfig:/usr/share/pkgconfig
+export PKG_CONFIG_PATH := /usr/lib/$(shell dpkg-architecture -qDEB_HOST_MULTIARCH 2>/dev/null || echo x86_64-linux-gnu)/pkgconfig:/usr/share/pkgconfig
 
 %:
 	dh $@
@@ -46,8 +46,8 @@ override_dh_auto_configure:
 	    --enable-license=no \
 	    --enable-thread-safety \
 	    XML2_CONFIG=/usr/bin/xml2-config \
-	    CFLAGS="-O2 -g -fPIC -w -Wno-error=incompatible-pointer-types -Wno-error=int-conversion -Wno-error=implicit-function-declaration -Wno-error=implicit-int -msse4.2 -mcrc32 -mcx16 -DNOLIC -I/usr/include/libxml2" \
-	    LDFLAGS="-L/usr/lib/x86_64-linux-gnu -Wl,--allow-multiple-definition -Wl,-rpath,/usr/lib/opentenbase/$(OTB_VERSION)/lib" \
+	    CFLAGS="-O2 -g -fPIC -w -Wno-error=incompatible-pointer-types -Wno-error=int-conversion -Wno-error=implicit-function-declaration -Wno-error=implicit-int -DNOLIC -I/usr/include/libxml2" \
+	    LDFLAGS="-L/usr/lib/$(shell dpkg-architecture -qDEB_HOST_MULTIARCH 2>/dev/null || echo x86_64-linux-gnu) -Wl,--allow-multiple-definition -Wl,-rpath,/usr/lib/opentenbase/$(OTB_VERSION)/lib" \
 	    LIBS="-lzstd -llz4 -Wl,--no-as-needed -latomic -Wl,--as-needed"
 	# Ensure -latomic is in LIBS for final link (configure resets LIBS)
 	# Use --no-as-needed to prevent linker from skipping libatomic

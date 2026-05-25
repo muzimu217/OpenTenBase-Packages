@@ -45,7 +45,7 @@ Description: distributed SQL database (metapackage)
  and opentenbase-client for a typical single-node installation.
 
 Package: opentenbase-server
-Architecture: amd64
+Architecture: any
 Depends:
  ${shlibs:Depends},
  ${misc:Depends},
@@ -62,7 +62,7 @@ Description: OpenTenBase server binaries (postgres, gtm, pg_ctl)
  creates the opentenbase system user and data directories.
 
 Package: opentenbase-client
-Architecture: amd64
+Architecture: any
 Depends:
  ${shlibs:Depends},
  ${misc:Depends}
@@ -76,7 +76,7 @@ Description: OpenTenBase client utilities (psql, pg_dump)
  avoid conflicts with system PostgreSQL client packages.
 
 Package: opentenbase-contrib
-Architecture: amd64
+Architecture: any
 Depends:
  ${shlibs:Depends},
  ${misc:Depends},
@@ -90,7 +90,7 @@ Description: OpenTenBase contributed extensions
 
 Package: libopentenbase-dev
 Section: libdevel
-Architecture: amd64
+Architecture: any
 Depends:
  ${misc:Depends},
  libssl-dev,
