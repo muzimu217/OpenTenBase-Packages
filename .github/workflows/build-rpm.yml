@@ -59,7 +59,7 @@ jobs:
             os: ubuntu-latest
             arch: x86_64
             container: quay.io/fedora/fedora:40
-          # OpenEuler
+          # OpenEuler (optional - slow mirrors)
           - name: openeuler-22.03-x86_64
             os: ubuntu-latest
             arch: x86_64
@@ -67,7 +67,8 @@ jobs:
 
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 60
+    timeout-minutes: 45
+    continue-on-error: ${{ contains(matrix.name, 'openeuler') }}
     container:
       image: ${{ matrix.container }}
 
