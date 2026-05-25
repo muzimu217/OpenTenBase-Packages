@@ -13,6 +13,7 @@ Build-Depends:
  libkrb5-dev,
  uuid-dev,
  libsystemd-dev,
+ libatomic,
  flex,
  bison,
  perl,

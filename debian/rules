@@ -47,10 +47,9 @@ override_dh_auto_configure:
 	    --enable-thread-safety \
 	    XML2_CONFIG=/usr/bin/xml2-config \
 	    CFLAGS="-O2 -g -fPIC -w -Wno-error=incompatible-pointer-types -Wno-error=int-conversion -Wno-error=implicit-function-declaration -Wno-error=implicit-int -DNOLIC -I/usr/include/libxml2" \
-	    LDFLAGS="-L/usr/lib/$(shell dpkg-architecture -qDEB_HOST_MULTIARCH 2>/dev/null || echo x86_64-linux-gnu) -Wl,--allow-multiple-definition -Wl,-rpath,/usr/lib/opentenbase/$(OTB_VERSION)/lib" \
+	    LDFLAGS="-L/usr/lib/$(shell dpkg-architecture -qDEB_HOST_MULTIARCH 2>/dev/null || echo x86_64-linux-gnu) -Wl,--allow-multiple-definition -Wl,-rpath,/usr/lib/opentenbase/$(OTB_VERSION)/lib -Wl,--no-as-needed -latomic -Wl,--as-needed" \
 	    LIBS="-lzstd -llz4 -Wl,--no-as-needed -latomic -Wl,--as-needed"
-	# Ensure -latomic is in LIBS for final link (configure resets LIBS)
-	# Use --no-as-needed to prevent linker from skipping libatomic
+	# Also patch LIBS in Makefile.global as a safety net
 	sed -i 's/^LIBS = \(.*\)/LIBS = \1 -Wl,--no-as-needed -latomic -Wl,--as-needed/' src/Makefile.global
 
 override_dh_auto_build:
