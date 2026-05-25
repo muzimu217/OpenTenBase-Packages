@@ -51,6 +51,9 @@ override_dh_auto_configure:
 	    LIBS="-lzstd -llz4 -Wl,--no-as-needed -latomic -Wl,--as-needed"
 	# Also patch LIBS in Makefile.global as a safety net
 	sed -i 's/^LIBS = \(.*\)/LIBS = \1 -Wl,--no-as-needed -latomic -Wl,--as-needed/' src/Makefile.global
+	# Strip --as-needed from LDFLAGS to prevent linker from skipping -latomic
+	# (debhelper appends --as-needed after our flags, causing 128-bit atomics to fail)
+	sed -i 's/-Wl,--as-needed//g' src/Makefile.global
 
 override_dh_auto_build:
 	# Fix flex lex.backup race: replace the wc -l check + rm with simple rm -f
