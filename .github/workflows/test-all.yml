@@ -1,0 +1,135 @@
+name: Test All Packages
+
+on:
+  workflow_dispatch:
+    inputs:
+      distro:
+        description: 'Test specific distro (leave empty for all)'
+        required: false
+        type: string
+
+jobs:
+  test-deb:
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        include:
+          - name: ubuntu-20.04
+            container: ubuntu:20.04
+            codename: focal
+          - name: ubuntu-22.04
+            container: ubuntu:22.04
+            codename: jammy
+          - name: ubuntu-24.04
+            container: ubuntu:24.04
+            codename: noble
+          - name: ubuntu-25.04
+            container: ubuntu:25.04
+            codename: plucky
+          - name: debian-11
+            container: debian:bullseye
+            codename: bullseye
+          - name: debian-12
+            container: debian:bookworm
+            codename: bookworm
+          - name: debian-13
+            container: debian:trixie
+            codename: trixie
+
+    name: DEB ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    container:
+      image: ${{ matrix.container }}
+
+    steps:
+      - name: Install deps
+        run: |
+          export DEBIAN_FRONTEND=noninteractive
+          apt-get update
+          apt-get install -y sudo procps libatomic1 adduser
+          apt-get install -y libreadline8 libxml2 libcurl4 libpam0g liblz4-1 libzstd1 2>/dev/null || true
+          apt-get install -y libreadline-dev 2>/dev/null || true
+          apt-get install -y libssl3 2>/dev/null || apt-get install -y libssl1.1 2>/dev/null || true
+          apt-get install -y libldap-2.5-0 2>/dev/null || apt-get install -y libldap-2.4-2 2>/dev/null || true
+          apt-get install -y libsasl2-2 2>/dev/null || true
+
+      - name: Download packages
+        uses: actions/download-artifact@v4
+        with:
+          pattern: debs-*${{ matrix.codename }}*
+          path: /tmp/debs/
+          merge-multiple: true
+
+      - name: Install packages
+        run: |
+          ls -la /tmp/debs/
+          dpkg -i /tmp/debs/*.deb 2>/dev/null || apt-get install -f -y
+          mkdir -p /usr/lib/opentenbase/5.0/lib/postgresql
+          ldconfig || true
+
+      - name: Checkout test scripts
+        uses: actions/checkout@v4
+
+      - name: Run multi-node test
+        run: |
+          chmod +x test/multi-node-test.sh
+          bash test/multi-node-test.sh
+
+  test-rpm:
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        include:
+          - name: rocky-9
+            container: rockylinux:9
+          - name: rocky-8
+            container: rockylinux:8
+          - name: alma-9
+            container: almalinux:9
+          - name: alma-8
+            container: almalinux:8
+          - name: centos-stream-9
+            container: quay.io/centos/centos:stream9
+          - name: centos-stream-8
+            container: quay.io/centos/centos:stream8
+          - name: fedora-40
+            container: fedora:40
+          - name: openeuler-22.03
+            container: openeuler/openeuler:22.03
+
+    name: RPM ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    container:
+      image: ${{ matrix.container }}
+
+    steps:
+      - name: Install deps
+        run: |
+          dnf install -y sudo procps-ng libatomic || yum install -y sudo procps-ng libatomic
+          dnf install -y readline libxml2 libcurl libpq openssl-libs pam lz4 zstd 2>/dev/null || \
+            yum install -y readline libxml2 libcurl openssl-libs pam lz4 zstd 2>/dev/null || true
+
+      - name: Download packages
+        uses: actions/download-artifact@v4
+        with:
+          pattern: rpms-*${{ matrix.name }}*
+          path: /tmp/rpms/
+          merge-multiple: true
+
+      - name: Install packages
+        run: |
+          ls -la /tmp/rpms/
+          rpm -ivh /tmp/rpms/*.rpm --nodeps 2>/dev/null || true
+          ldconfig || true
+
+      - name: Checkout test scripts
+        uses: actions/checkout@v4
+
+      - name: Run multi-node test
+        run: |
+          chmod +x test/multi-node-test.sh
+          bash test/multi-node-test.sh

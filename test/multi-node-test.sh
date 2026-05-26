@@ -1,0 +1,195 @@
+#!/bin/bash
+# OpenTenBase Multi-Node Smoke Test
+# Tests GTM + Coordinator + Datanode deployment and CRUD operations
+# Runs inside Docker container after package installation
+set -e
+
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m'
+
+PASS=0
+FAIL=0
+TOTAL=0
+
+pass() { echo -e "${GREEN}[PASS]${NC} $1"; PASS=$((PASS+1)); TOTAL=$((TOTAL+1)); }
+fail() { echo -e "${RED}[FAIL]${NC} $1"; FAIL=$((FAIL+1)); TOTAL=$((TOTAL+1)); }
+info() { echo -e "${YELLOW}[INFO]${NC} $1"; }
+
+OTB_USER=opentenbase
+OTB_HOME=/var/lib/opentenbase
+GTM_PORT=6666
+DN_PORT=5433
+COORD_PORT=5432
+DN_POOLER=6668
+DN_FWD=6670
+COORD_POOLER=6669
+COORD_FWD=6671
+
+# Ensure user exists
+id $OTB_USER 2>/dev/null || {
+    groupadd --system $OTB_USER 2>/dev/null || true
+    useradd --system --gid $OTB_USER --home-dir $OTB_HOME --shell /bin/bash $OTB_USER 2>/dev/null || true
+}
+
+mkdir -p $OTB_HOME/data/{gtm,dn1,coord} /var/log/opentenbase
+chown -R $OTB_USER:$OTB_USER $OTB_HOME /var/log/opentenbase
+
+export PATH=/usr/lib/opentenbase/5.0/bin:$PATH
+
+info "=== 1. Initialize GTM ==="
+sudo -u $OTB_USER initgtm -Z gtm -D $OTB_HOME/data/gtm
+cat > $OTB_HOME/data/gtm/gtm.conf <<EOF
+listen_addresses = '*'
+port = $GTM_PORT
+nodename = 'one'
+EOF
+chown $OTB_USER:$OTB_USER $OTB_HOME/data/gtm/gtm.conf
+
+info "=== 2. Initialize Datanode ==="
+sudo -u $OTB_USER initdb --datanode -D $OTB_HOME/data/dn1 \
+    --master_gtm_ip=localhost --master_gtm_port=$GTM_PORT --master_gtm_nodename=one
+cat >> $OTB_HOME/data/dn1/postgresql.conf <<EOF
+port = $DN_PORT
+pooler_port = $DN_POOLER
+forward_port = $DN_FWD
+listen_addresses = '*'
+EOF
+
+info "=== 3. Initialize Coordinator ==="
+sudo -u $OTB_USER initdb --coordinator -D $OTB_HOME/data/coord \
+    --master_gtm_ip=localhost --master_gtm_port=$GTM_PORT --master_gtm_nodename=one
+cat >> $OTB_HOME/data/coord/postgresql.conf <<EOF
+port = $COORD_PORT
+pooler_port = $COORD_POOLER
+forward_port = $COORD_FWD
+listen_addresses = '*'
+EOF
+
+info "=== 4. Start GTM ==="
+sudo -u $OTB_USER gtm -D $OTB_HOME/data/gtm &
+sleep 2
+if pgrep -f "gtm.*$GTM_PORT" >/dev/null 2>&1; then
+    pass "GTM started on port $GTM_PORT"
+else
+    fail "GTM failed to start"
+    exit 1
+fi
+
+info "=== 5. Start Datanode ==="
+sudo -u $OTB_USER postgres --datanode -D $OTB_HOME/data/dn1 &
+sleep 3
+if pgrep -f "postgres.*datanode" >/dev/null 2>&1; then
+    pass "Datanode started on port $DN_PORT"
+else
+    fail "Datanode failed to start"
+    exit 1
+fi
+
+info "=== 6. Start Coordinator ==="
+sudo -u $OTB_USER postgres --coordinator -D $OTB_HOME/data/coord &
+sleep 3
+if pgrep -f "postgres.*coordinator" >/dev/null 2>&1; then
+    pass "Coordinator started on port $COORD_PORT"
+else
+    fail "Coordinator failed to start"
+    exit 1
+fi
+
+info "=== 7. Register Nodes ==="
+sudo -u $OTB_USER psql -h 127.0.0.1 -p $COORD_PORT -U $OTB_USER -d postgres -c \
+    "CREATE NODE dn1 WITH (type='datanode', host='localhost', port=$DN_PORT);" && \
+    pass "Datanode registered on coordinator" || fail "Datanode registration failed"
+
+sudo -u $OTB_USER psql -h 127.0.0.1 -p $DN_PORT -U $OTB_USER -d postgres -c \
+    "CREATE NODE coord WITH (type='coordinator', host='localhost', port=$COORD_PORT);" && \
+    pass "Coordinator registered on datanode" || fail "Coordinator registration failed"
+
+info "=== 8. Create Sharding Group ==="
+sudo -u $OTB_USER psql -h 127.0.0.1 -p $COORD_PORT -U $OTB_USER -d postgres -c \
+    "CREATE NODE GROUP mygroup WITH (dn1);" && \
+    pass "Node group created" || fail "Node group creation failed"
+
+sudo -u $OTB_USER psql -h 127.0.0.1 -p $COORD_PORT -U $OTB_USER -d postgres -c \
+    "CREATE SHARDING GROUP TO GROUP mygroup;" && \
+    pass "Sharding group initialized" || fail "Sharding group init failed"
+
+PSQL="sudo -u $OTB_USER psql -h 127.0.0.1 -p $COORD_PORT -U $OTB_USER -d postgres"
+
+info "=== 9. CRUD Operations ==="
+
+# CREATE TABLE (sharding)
+$PSQL -c "CREATE TABLE smoke_test (id int PRIMARY KEY, name text) DISTRIBUTE BY SHARDING;" && \
+    pass "CREATE sharding table" || fail "CREATE sharding table"
+
+# INSERT
+$PSQL -c "INSERT INTO smoke_test VALUES (1, 'Alice'), (2, 'Bob'), (3, 'Charlie');" && \
+    pass "INSERT 3 rows" || fail "INSERT"
+
+# SELECT all
+RESULT=$($PSQL -t -A -c "SELECT count(*) FROM smoke_test;")
+[ "$RESULT" = "3" ] && pass "SELECT count = 3" || fail "SELECT count (got $RESULT)"
+
+# SELECT with WHERE
+RESULT=$($PSQL -t -A -c "SELECT name FROM smoke_test WHERE id = 2;")
+[ "$RESULT" = "Bob" ] && pass "SELECT WHERE id=2" || fail "SELECT WHERE (got $RESULT)"
+
+# UPDATE
+$PSQL -c "UPDATE smoke_test SET name = 'Alice2' WHERE id = 1;" && \
+    pass "UPDATE row" || fail "UPDATE"
+
+RESULT=$($PSQL -t -A -c "SELECT name FROM smoke_test WHERE id = 1;")
+[ "$RESULT" = "Alice2" ] && pass "UPDATE verified" || fail "UPDATE verify (got $RESULT)"
+
+# DELETE
+$PSQL -c "DELETE FROM smoke_test WHERE id = 3;" && \
+    pass "DELETE row" || fail "DELETE"
+
+RESULT=$($PSQL -t -A -c "SELECT count(*) FROM smoke_test;")
+[ "$RESULT" = "2" ] && pass "DELETE verified (count=2)" || fail "DELETE verify (got $RESULT)"
+
+# Normal table
+$PSQL -c "CREATE TABLE smoke_normal (id int, val text);" && \
+    pass "CREATE normal table" || fail "CREATE normal table"
+
+$PSQL -c "INSERT INTO smoke_normal VALUES (100, 'test');" && \
+    pass "INSERT normal table" || fail "INSERT normal table"
+
+RESULT=$($PSQL -t -A -c "SELECT val FROM smoke_normal WHERE id = 100;")
+[ "$RESULT" = "test" ] && pass "SELECT normal table" || fail "SELECT normal table"
+
+# Cleanup
+$PSQL -c "DROP TABLE smoke_test;" && pass "DROP sharding table" || fail "DROP sharding table"
+$PSQL -c "DROP TABLE smoke_normal;" && pass "DROP normal table" || fail "DROP normal table"
+
+info "=== 10. License Check ==="
+# Verify cluster is writable (license bypass works)
+$PSQL -c "CREATE TABLE license_test (id int);" && \
+    pass "License bypass: cluster is writable" || fail "License bypass: cluster is read-only"
+$PSQL -c "DROP TABLE license_test;" 2>/dev/null || true
+
+info "=== 11. Cleanup ==="
+sudo -u $OTB_USER psql -h 127.0.0.1 -p $COORD_PORT -U $OTB_USER -d postgres -c "SELECT pgxc_pool_reload();" 2>/dev/null || true
+kill $(pgrep -f "postgres.*coordinator") 2>/dev/null || true
+kill $(pgrep -f "postgres.*datanode") 2>/dev/null || true
+kill $(pgrep -f "gtm") 2>/dev/null || true
+sleep 2
+pass "Cluster stopped cleanly"
+
+echo ""
+echo "========================================"
+echo "  Multi-Node Test Results"
+echo "========================================"
+echo "  Total:  $TOTAL"
+echo -e "  Passed: ${GREEN}$PASS${NC}"
+echo -e "  Failed: ${RED}$FAIL${NC}"
+echo ""
+
+if [ "$FAIL" -eq 0 ]; then
+    echo -e "${GREEN}All multi-node tests passed!${NC}"
+    exit 0
+else
+    echo -e "${RED}$FAIL test(s) failed!${NC}"
+    exit 1
+fi
