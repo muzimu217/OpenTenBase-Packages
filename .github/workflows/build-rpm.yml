@@ -237,12 +237,13 @@ jobs:
               done
 
               # Copy sources
-              cp -r /tmp/source/OpenTenBase /tmp/build-source
+              mkdir -p /tmp/build-source
+              cp -r /tmp/source/OpenTenBase /tmp/build-source/OpenTenBase
               cp -r /tmp/opentenbase-pkg /tmp/build-pkg
 
               # Build
               cd /tmp/build-pkg/rpm
-              bash build-rpm.sh --source-dir /tmp/build-source --version 5.0
+              bash build-rpm.sh --source-dir /tmp/build-source/OpenTenBase --version 5.0
 
               # Copy output
               ARCH_DIR=$(uname -m)
