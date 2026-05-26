@@ -1,5 +1,6 @@
 #!/bin/bash
 # OpenTenBase Docker Compose 一键部署测试脚本
+# 自动检测架构 (x86_64/aarch64) 并下载对应的 RPM 包
 # 用法: bash test-docker.sh
 
 set -e
@@ -19,219 +20,94 @@ if ! docker info &> /dev/null; then
     exit 1
 fi
 
-echo "[1/5] 创建目录结构..."
-mkdir -p /tmp/otb-docker/runtime /tmp/otb-docker/compose
+# 自动检测架构
+ARCH=$(uname -m)
+echo "检测到架构: $ARCH"
 
-echo "[2/5] 下载 .deb 包..."
+# 设置下载链接和包名
+RELEASE_TAG="v5.0-multi13"
+BASE_URL="https://github.com/muzimu217/OpenTenBase-deb/releases/download/${RELEASE_TAG}"
+
+# 根据架构选择 RPM 包
+if [ "$ARCH" = "aarch64" ]; then
+    # aarch64: 使用 openeuler 包
+    RPM_DISTRO="openeuler-22.03-aarch64"
+    # 尝试多个可能的包名格式
+    RPM_CANDIDATES=(
+        "opentenbase-5.0-1.${RPM_DISTRO}.aarch64.rpm"
+        "opentenbase-5.0-1.aarch64.${RPM_DISTRO}.rpm"
+    )
+    echo "使用 aarch64 RPM 包 (openeuler)"
+elif [ "$ARCH" = "x86_64" ]; then
+    # x86_64: 使用 rockylinux 包
+    RPM_DISTRO="rockylinux-8-x86_64"
+    RPM_CANDIDATES=(
+        "opentenbase-5.0-1.${RPM_DISTRO}.x86_64.rpm"
+        "opentenbase-5.0-1.x86_64.${RPM_DISTRO}.rpm"
+    )
+    echo "使用 x86_64 RPM 包 (rockylinux)"
+else
+    echo "ERROR: 不支持的架构: $ARCH"
+    exit 1
+fi
+
+# 创建工作目录
+echo "[1/5] 创建目录结构..."
+mkdir -p /tmp/otb-docker/runtime/extracted /tmp/otb-docker/compose
+
+# 下载 RPM 包
+echo "[2/5] 下载 RPM 包..."
 cd /tmp/otb-docker/runtime
-for deb in \
-    opentenbase_5.0-1ubuntu1.noble_all.deb \
-    opentenbase-server_5.0-1ubuntu1.noble_amd64.deb \
-    opentenbase-client_5.0-1ubuntu1.noble_amd64.deb \
-    opentenbase-contrib_5.0-1ubuntu1.noble_amd64.deb; do
-    if [ ! -f "$deb" ]; then
-        echo "  下载 $deb..."
-        curl -sL -o "$deb" "https://github.com/muzimu217/OpenTenBase-deb/releases/download/v5.0-multi10/$deb"
+RPM_FILE=""
+for rpm in "${RPM_CANDIDATES[@]}"; do
+    echo "  尝试下载 $rpm..."
+    if curl -sL -f -o "$rpm" "${BASE_URL}/${rpm}" 2>/dev/null; then
+        RPM_FILE="$rpm"
+        echo "  成功下载: $rpm"
+        break
+    else
+        echo "  不存在: $rpm"
+        rm -f "$rpm"
     fi
 done
-ls -la *.deb
 
-echo "[3/5] 创建 Dockerfile..."
-cat > /tmp/otb-docker/runtime/Dockerfile.runtime << 'DOCKERFILE'
-FROM ubuntu:24.04
+if [ -z "$RPM_FILE" ]; then
+    echo ""
+    echo "ERROR: 无法下载 RPM 包。"
+    echo "请检查 GitHub Releases 是否有 $ARCH 架构的包:"
+    echo "  ${BASE_URL}"
+    echo ""
+    echo "可用的 x86_64 包:"
+    curl -sL "https://api.github.com/repos/muzimu217/OpenTenBase-deb/releases/tags/${RELEASE_TAG}" | \
+        grep -o '"name": "[^"]*rpm"' | grep -i "$ARCH" || echo "  (无)"
+    exit 1
+fi
 
-ENV DEBIAN_FRONTEND=noninteractive
+# 解压 RPM 包到 extracted/ 目录
+echo "[3/5] 解压 RPM 包..."
+cd /tmp/otb-docker/runtime
+rm -rf extracted
+mkdir -p extracted
+# rpm2cpio 解压到 extracted 目录
+rpm2cpio "$RPM_FILE" | (cd extracted && cpio -idm 2>/dev/null || true)
+echo "  解压完成"
+ls -la extracted/usr/lib/opentenbase/5.0/bin/ 2>/dev/null | head -5 || echo "  WARNING: 未找到 bin 目录"
 
-# Install runtime dependencies
-RUN apt-get update && apt-get install -y \
-    libreadline8 \
-    libssl3 \
-    libxml2 \
-    libcurl4 \
-    libpam0g \
-    liblz4-1 \
-    libzstd1 \
-    libssh2-1 \
-    libuuid1 \
-    libatomic1 \
-    adduser \
-    sudo \
-    curl \
-    iputils-ping \
-    net-tools \
-    netcat-openbsd \
-    && rm -rf /var/lib/apt/lists/*
+# 复制 Dockerfile 和 entrypoint
+echo "[4/5] 准备构建文件..."
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+if [ -f "$SCRIPT_DIR/runtime/Dockerfile.runtime" ]; then
+    cp "$SCRIPT_DIR/runtime/Dockerfile.runtime" /tmp/otb-docker/runtime/
+else
+    echo "  使用仓库中的 Dockerfile.runtime"
+fi
+if [ -f "$SCRIPT_DIR/runtime/entrypoint.sh" ]; then
+    cp "$SCRIPT_DIR/runtime/entrypoint.sh" /tmp/otb-docker/runtime/
+else
+    echo "  使用仓库中的 entrypoint.sh"
+fi
 
-# Install OpenTenBase packages
-COPY *.deb /tmp/debs/
-RUN dpkg -i --force-depends /tmp/debs/*.deb \
-    && rm -rf /tmp/debs
-
-# Create opentenbase user
-RUN useradd -m -s /bin/bash opentenbase || true
-
-# Entrypoint
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
-
-ENTRYPOINT ["/entrypoint.sh"]
-DOCKERFILE
-
-echo "[4/5] 创建 entrypoint.sh..."
-cat > /tmp/otb-docker/runtime/entrypoint.sh << 'ENTRYPOINT'
-#!/bin/bash
-set -e
-
-NODE_TYPE="${NODE_TYPE:-}"
-NODE_NAME="${NODE_NAME:-}"
-GTM_HOST="${GTM_HOST:-gtm}"
-GTM_PORT="${GTM_PORT:-6666}"
-COORD_HOST="${COORD_HOST:-coordinator}"
-COORD_PORT="${COORD_PORT:-5432}"
-DN_PORT="${DN_PORT:-15432}"
-
-DATA_DIR="/var/lib/opentenbase/data/${NODE_NAME}"
-
-log() {
-    echo "[${NODE_NAME}] $(date '+%H:%M:%S') $1"
-}
-
-resolve_ip() {
-    getent hosts "$1" 2>/dev/null | awk '{print $1}' || echo "$1"
-}
-
-wait_for_port() {
-    local host=$1 port=$2 timeout=${3:-60}
-    log "Waiting for ${host}:${port}..."
-    for i in $(seq 1 "$timeout"); do
-        if bash -c "echo > /dev/tcp/${host}/${port}" 2>/dev/null; then
-            log "${host}:${port} is ready"
-            return 0
-        fi
-        if command -v nc &>/dev/null && nc -z -w1 "$host" "$port" 2>/dev/null; then
-            log "${host}:${port} is ready (via nc)"
-            return 0
-        fi
-        sleep 1
-    done
-    log "ERROR: ${host}:${port} not ready after ${timeout}s"
-    return 1
-}
-
-init_gtm() {
-    if [ ! -f "$DATA_DIR/gtm.conf" ]; then
-        log "Initializing GTM..."
-        mkdir -p "$DATA_DIR"
-        chown opentenbase:opentenbase "$DATA_DIR"
-        sudo -u opentenbase /usr/lib/opentenbase/5.0/bin/initgtm -Z gtm -D "$DATA_DIR"
-        cat >> "$DATA_DIR/gtm.conf" <<EOF
-port = $GTM_PORT
-listen_addresses = '*'
-EOF
-    fi
-    log "Starting GTM on port $GTM_PORT..."
-    exec sudo -u opentenbase /usr/lib/opentenbase/5.0/bin/gtm -D "$DATA_DIR"
-}
-
-init_coordinator() {
-    if [ ! -f "$DATA_DIR/postgresql.conf" ]; then
-        log "Initializing Coordinator..."
-        mkdir -p "$DATA_DIR"
-        chown opentenbase:opentenbase "$DATA_DIR"
-        sudo -u opentenbase /usr/lib/opentenbase/5.0/bin/initdb -D "$DATA_DIR" --nodename=coordinator --nodetype=coordinator
-        cat >> "$DATA_DIR/postgresql.conf" <<EOF
-port = $COORD_PORT
-listen_addresses = '*'
-gtm_host = '$GTM_HOST'
-gtm_port = $GTM_PORT
-pooler_port = $((COORD_PORT + 2000))
-EOF
-        echo "host all all 0.0.0.0/0 trust" >> "$DATA_DIR/pg_hba.conf"
-    fi
-
-    GTM_IP=$(resolve_ip "$GTM_HOST")
-    wait_for_port "$GTM_IP" "$GTM_PORT"
-
-    log "Starting Coordinator on port $COORD_PORT..."
-    sudo -u opentenbase /usr/lib/opentenbase/5.0/bin/postgres --coordinator -D "$DATA_DIR" &
-    COORD_PID=$!
-
-    wait_for_port "127.0.0.1" "$COORD_PORT" 30
-
-    COORD_IP=$(resolve_ip "$COORD_HOST")
-    DN1_IP=$(resolve_ip "datanode1")
-    DN2_IP=$(resolve_ip "datanode2")
-    log "Resolved IPs: gtm=$GTM_IP, coord=$COORD_IP, dn1=$DN1_IP, dn2=$DN2_IP"
-
-    log "Registering nodes..."
-    sudo -u opentenbase /usr/lib/opentenbase/5.0/bin/psql -h 127.0.0.1 -p "$COORD_PORT" -U opentenbase -d postgres -c \
-        "CREATE NODE gtm_master WITH (TYPE='gtm', HOST='$GTM_IP', PORT=$GTM_PORT);" 2>/dev/null || true
-    sudo -u opentenbase /usr/lib/opentenbase/5.0/bin/psql -h 127.0.0.1 -p "$COORD_PORT" -U opentenbase -d postgres -c \
-        "CREATE NODE coord1 WITH (TYPE='coordinator', HOST='$COORD_IP', PORT=$COORD_PORT, PREFERRED);" 2>/dev/null || true
-    sudo -u opentenbase /usr/lib/opentenbase/5.0/bin/psql -h 127.0.0.1 -p "$COORD_PORT" -U opentenbase -d postgres -c \
-        "CREATE NODE dn001 WITH (TYPE='datanode', HOST='$DN1_IP', PORT=15432, PREFERRED);" 2>/dev/null || true
-    sudo -u opentenbase /usr/lib/opentenbase/5.0/bin/psql -h 127.0.0.1 -p "$COORD_PORT" -U opentenbase -d postgres -c \
-        "CREATE NODE dn002 WITH (TYPE='datanode', HOST='$DN2_IP', PORT=15433);" 2>/dev/null || true
-    sudo -u opentenbase /usr/lib/opentenbase/5.0/bin/psql -h 127.0.0.1 -p "$COORD_PORT" -U opentenbase -d postgres -c \
-        "SELECT pgxc_pool_reload();" 2>/dev/null || true
-
-    log "Coordinator ready"
-    wait $COORD_PID
-}
-
-init_datanode() {
-    if [ ! -f "$DATA_DIR/postgresql.conf" ]; then
-        log "Initializing Datanode..."
-        mkdir -p "$DATA_DIR"
-        chown opentenbase:opentenbase "$DATA_DIR"
-        sudo -u opentenbase /usr/lib/opentenbase/5.0/bin/initdb -D "$DATA_DIR" --nodename="$NODE_NAME" --nodetype=datanode
-        cat >> "$DATA_DIR/postgresql.conf" <<EOF
-port = $DN_PORT
-listen_addresses = '*'
-gtm_host = '$GTM_HOST'
-gtm_port = $GTM_PORT
-pooler_port = $((DN_PORT + 2000))
-EOF
-        echo "host all all 0.0.0.0/0 trust" >> "$DATA_DIR/pg_hba.conf"
-    fi
-
-    GTM_IP=$(resolve_ip "$GTM_HOST")
-    COORD_IP=$(resolve_ip "$COORD_HOST")
-    MY_IP=$(resolve_ip "$(hostname)")
-    wait_for_port "$GTM_IP" "$GTM_PORT"
-
-    log "Starting Datanode on port $DN_PORT..."
-    sudo -u opentenbase /usr/lib/opentenbase/5.0/bin/postgres --datanode -D "$DATA_DIR" &
-    DN_PID=$!
-
-    wait_for_port "127.0.0.1" "$DN_PORT" 30
-
-    log "Registering nodes on datanode..."
-    sudo -u opentenbase /usr/lib/opentenbase/5.0/bin/psql -h 127.0.0.1 -p "$DN_PORT" -U opentenbase -d postgres -c \
-        "CREATE NODE gtm_master WITH (TYPE='gtm', HOST='$GTM_IP', PORT=$GTM_PORT);" 2>/dev/null || true
-    sudo -u opentenbase /usr/lib/opentenbase/5.0/bin/psql -h 127.0.0.1 -p "$DN_PORT" -U opentenbase -d postgres -c \
-        "CREATE NODE coord1 WITH (TYPE='coordinator', HOST='$COORD_IP', PORT=$COORD_PORT);" 2>/dev/null || true
-    sudo -u opentenbase /usr/lib/opentenbase/5.0/bin/psql -h 127.0.0.1 -p "$DN_PORT" -U opentenbase -d postgres -c \
-        "CREATE NODE $NODE_NAME WITH (TYPE='datanode', HOST='$MY_IP', PORT=$DN_PORT, PREFERRED);" 2>/dev/null || true
-    sudo -u opentenbase /usr/lib/opentenbase/5.0/bin/psql -h 127.0.0.1 -p "$DN_PORT" -U opentenbase -d postgres -c \
-        "SELECT pgxc_pool_reload();" 2>/dev/null || true
-
-    log "Datanode ready"
-    wait $DN_PID
-}
-
-case "$NODE_TYPE" in
-    gtm)         init_gtm ;;
-    coordinator) init_coordinator ;;
-    datanode)    init_datanode ;;
-    *)
-        log "ERROR: NODE_TYPE must be gtm, coordinator, or datanode"
-        exit 1
-        ;;
-esac
-ENTRYPOINT
-chmod +x /tmp/otb-docker/runtime/entrypoint.sh
-
+# 创建 docker-compose.yml
 echo "[5/5] 创建 docker-compose.yml..."
 cat > /tmp/otb-docker/compose/docker-compose.yml << 'COMPOSE'
 services:
@@ -372,7 +248,8 @@ echo "  /tmp/otb-docker/"
 echo "  ├── runtime/"
 echo "  │   ├── Dockerfile.runtime"
 echo "  │   ├── entrypoint.sh"
-echo "  │   └── *.deb (4个包)"
+echo "  │   ├── $RPM_FILE"
+echo "  │   └── extracted/ (RPM 解压内容)"
 echo "  └── compose/"
 echo "      └── docker-compose.yml"
 echo ""

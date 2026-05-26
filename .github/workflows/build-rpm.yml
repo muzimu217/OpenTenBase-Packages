@@ -24,6 +24,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # ===== x86_64 Builds =====
           # CentOS Stream 8
           - name: centos-stream-8-x86_64
             os: ubuntu-latest
@@ -59,15 +60,36 @@ jobs:
             os: ubuntu-latest
             arch: x86_64
             container: quay.io/fedora/fedora:40
-          # OpenEuler (optional - slow mirrors)
+          # OpenEuler x86_64
           - name: openeuler-22.03-x86_64
             os: ubuntu-latest
             arch: x86_64
             container: openeuler/openeuler:22.03
+          # ===== aarch64 Builds =====
+          # OpenEuler aarch64
+          - name: openeuler-22.03-aarch64
+            os: ubuntu-24.04-arm64
+            arch: aarch64
+            container: openeuler/openeuler:22.03
+          # Rocky Linux 9 aarch64
+          - name: rockylinux-9-aarch64
+            os: ubuntu-24.04-arm64
+            arch: aarch64
+            container: rockylinux:9
+          # AlmaLinux 9 aarch64
+          - name: almalinux-9-aarch64
+            os: ubuntu-24.04-arm64
+            arch: aarch64
+            container: almalinux:9
+          # CentOS Stream 9 aarch64
+          - name: centos-stream-9-aarch64
+            os: ubuntu-24.04-arm64
+            arch: aarch64
+            container: quay.io/centos/centos:stream9
 
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 45
+    timeout-minutes: 60
     continue-on-error: ${{ contains(matrix.name, 'openeuler') }}
     container:
       image: ${{ matrix.container }}
@@ -155,7 +177,8 @@ jobs:
       - name: Rename RPM packages with distro name
         if: always()
         run: |
-          cd ~/rpmbuild/RPMS/x86_64 2>/dev/null || cd ~/rpmbuild/RPMS/noarch 2>/dev/null || true
+          ARCH_DIR=$(uname -m)
+          cd ~/rpmbuild/RPMS/${ARCH_DIR} 2>/dev/null || cd ~/rpmbuild/RPMS/noarch 2>/dev/null || true
           for rpm in *.rpm; do
             [ -f "$rpm" ] || continue
             newname=$(echo "$rpm" | sed "s/-5\.0-1\./-5.0-1.${{ matrix.name }}./")
