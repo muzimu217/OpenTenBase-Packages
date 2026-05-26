@@ -10,6 +10,7 @@ Source2:        pg_hba.conf.template
 
 %define otb_ver %{version}
 %define otb_prefix /usr/lib/opentenbase/%{otb_ver}
+%define debug_package %{nil}
 
 # Disable Fedora's annotated/hardened/LTO build macros
 # These inject -specs=...annobin-cc1, -flto=auto, etc. into CFLAGS/LDFLAGS
@@ -396,7 +397,16 @@ fi
 # libpq's Makefile has 'all: all-lib' but doesn't generate objfiles.txt
 # which the postgres binary needs to link against libpq objects
 make -j$(nproc) -C src/interfaces/libpq
+# Regenerate objfiles.txt after all objects are compiled (including conditional SSL objects)
+# The parallel make may compile fe-secure-openssl.o after the initial glob
+make -j$(nproc) -C src/interfaces/libpq  # ensure all objects compiled
 ( cd src/interfaces/libpq && for f in *.o; do echo "src/interfaces/libpq/$f"; done ) > src/interfaces/libpq/objfiles.txt
+# Verify SSL objects are included
+grep -q 'fe-secure-openssl' src/interfaces/libpq/objfiles.txt || {
+    echo "WARNING: fe-secure-openssl.o missing from objfiles.txt, adding manually"
+    echo "src/interfaces/libpq/fe-secure-openssl.o" >> src/interfaces/libpq/objfiles.txt
+    echo "src/interfaces/libpq/sha2_openssl.o" >> src/interfaces/libpq/objfiles.txt
+}
 
 # Fix flex lex.backup race: replace the wc -l check + rm with simple rm -f
 # The original recipe fails when parallel flex removes lex.backup before wc reads it
@@ -407,6 +417,10 @@ make -j$(nproc)
 # Build contrib, but skip uuid-ossp (requires OSSP UUID not available on RPM distros)
 sed -i 's/^SUBDIRS += uuid-ossp/# SUBDIRS += uuid-ossp/' contrib/Makefile
 sed -i 's/^ALWAYS_SUBDIRS += uuid-ossp/# ALWAYS_SUBDIRS += uuid-ossp/' contrib/Makefile
+# Skip pgsql-http on aarch64 (R_AARCH64_ADR_PREL_PG_HI21 relocation error)
+%ifarch aarch64
+sed -i '/pgsql-http/d' contrib/Makefile
+%endif
 
 # Skip opentenbase_ctl if libssh2 is not available (it requires libssh2 for SSH functionality)
 if [ "$LIBSSH2_FOUND" = "0" ]; then
