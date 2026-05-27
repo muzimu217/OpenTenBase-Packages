@@ -9,6 +9,22 @@
 
 set -e
 
+REPO="muzimu217/OpenTenBase-deb"
+UPSTREAM_REPO="OpenTenBase/OpenTenBase"
+DEFAULT_VERSION="5.0"
+DEFAULT_TAG="v5.0-multi10"
+INSTALL_PREFIX="/usr/lib/opentenbase"
+
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m'
+
+log_info()  { echo -e "${GREEN}[INFO]${NC} $*"; }
+log_warn()  { echo -e "${YELLOW}[WARN]${NC} $*"; }
+log_error() { echo -e "${RED}[ERROR]${NC} $*" >&2; }
+
 # ============================================================
 # Cleanup residual /tmp packages from previous runs
 # ============================================================
@@ -26,22 +42,6 @@ cleanup_residual() {
     fi
 }
 cleanup_residual
-
-REPO="muzimu217/OpenTenBase-deb"
-UPSTREAM_REPO="OpenTenBase/OpenTenBase"
-DEFAULT_VERSION="5.0"
-DEFAULT_TAG="v5.0-multi10"
-INSTALL_PREFIX="/usr/lib/opentenbase"
-
-# Colors
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-NC='\033[0m'
-
-log_info()  { echo -e "${GREEN}[INFO]${NC} $*"; }
-log_warn()  { echo -e "${YELLOW}[WARN]${NC} $*"; }
-log_error() { echo -e "${RED}[ERROR]${NC} $*" >&2; }
 
 # Parse arguments
 VERSION=""
@@ -421,12 +421,16 @@ install_deb() {
     fi
 
     local dir="${DIR:-.}"
-    cd "$dir"
+    if [ -n "$DIR" ] && [ ! -d "$DIR" ]; then
+        log_warn "Directory $DIR does not exist, will download packages"
+        dir=""
+    fi
 
     # When a local directory is given, check for matching files there.
     # Otherwise, always download to a fresh temp directory to avoid
     # picking up stale packages from /tmp of a previous run.
-    if [ -n "$DIR" ] && [ -f "${DEBS[0]}" ]; then
+    if [ -n "$dir" ] && [ -f "$dir/${DEBS[0]}" ]; then
+        cd "$dir"
         log_info "Using local packages from $dir"
     else
         DLDIR=$(mktemp -d)
@@ -472,12 +476,13 @@ install_rpm() {
     fi
 
     local dir="${DIR:-.}"
-    cd "$dir"
+    if [ -n "$DIR" ] && [ ! -d "$DIR" ]; then
+        log_warn "Directory $DIR does not exist, will download packages"
+        dir=""
+    fi
 
-    # When a local directory is given, check for matching files there.
-    # Otherwise, always download to a fresh temp directory to avoid
-    # picking up stale packages from /tmp of a previous run.
-    if [ -n "$DIR" ] && [ -f "${RPMS[0]}" ]; then
+    if [ -n "$dir" ] && [ -f "$dir/${RPMS[0]}" ]; then
+        cd "$dir"
         log_info "Using local packages from $dir"
     else
         DLDIR=$(mktemp -d)
