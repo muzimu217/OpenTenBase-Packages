@@ -183,6 +183,7 @@ jobs:
             grep -o '"browser_download_url": *"[^"]*\.rpm"' | \
             sed 's/"browser_download_url": *"//' | sed 's/"$//' | \
             grep "${{ matrix.pattern }}" | \
+            grep "$(uname -m)" | \
             grep -v debuginfo | grep -v debugsource | \
             while read url; do curl -sLO "$url"; done
           ls -la /tmp/rpms/
