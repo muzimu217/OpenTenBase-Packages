@@ -359,8 +359,10 @@ opentenbase-psql -h 127.0.0.1 -p 5432 -U opentenbase -d postgres -c "SELECT * FR
 | 顺序 SELECT (100次) | 27ms 平均延迟, 36 QPS |
 | 并发 SELECT (50路) | 111-118 QPS |
 | 并发压力 (100路) | 122 QPS |
+| 批量 INSERT (generate_series 10000行) | OK - INSERT 0 10000 |
+| 并发批量 INSERT (5路 x 1000行) | OK - 5000 总计 |
 
-已知限制: pgbench TPC-B 测试因分布式表 serial 类型不兼容而失败
+**批量 INSERT 修复**：根因是 datanode 的 `pgxc_node` 中 `node_host = "localhost"` 导致 forward receiver 连接失败。修复为 `127.0.0.1` 后，INSERT...SELECT 正常工作。
 
 ---
 

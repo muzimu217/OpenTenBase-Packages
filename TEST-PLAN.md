@@ -208,3 +208,211 @@ docker run --rm -v ./packages:/packages ubuntu:24.04 bash -c "
 1. **P0**：Ubuntu 22.04/24.04, Debian 12, Rocky 9 — 最常用服务器发行版
 2. **P1**：Ubuntu 20.04, Debian 11, AlmaLinux 9, CentOS Stream 9
 3. **P2**：其余发行版 + ARM64
+
+---
+
+## Docker 部署测试
+
+### 基础设施测试
+
+| 测试项 | 命令 | 预期结果 |
+|--------|------|----------|
+| Docker 服务运行 | `docker info` | 显示 Docker 信息 |
+| Docker 网络创建 | `docker network ls` | 存在 opentenbase 网络 |
+| Docker 卷创建 | `docker volume ls` | 存在 4 个数据卷 |
+
+### 镜像构建测试
+
+| 测试项 | 命令 | 预期结果 |
+|--------|------|----------|
+| 基础镜像存在 | `docker images euleros-base` | 显示镜像 |
+| 运行时镜像构建 | `docker-compose build` | 构建成功 |
+| 镜像大小合理 | `docker images opentenbase-runtime` | < 4GB |
+
+### 容器启动测试
+
+| 测试项 | 命令 | 预期结果 |
+|--------|------|----------|
+| GTM 容器启动 | `docker ps \| grep gtm` | Up 状态 |
+| Coordinator 启动 | `docker ps \| grep coordinator` | Up 状态 |
+| Datanode1 启动 | `docker ps \| grep datanode1` | Up 状态 |
+| Datanode2 启动 | `docker ps \| grep datanode2` | Up 状态 |
+
+### 端口映射测试
+
+| 测试项 | 命令 | 预期结果 |
+|--------|------|----------|
+| GTM 端口 6666 | `nc -z localhost 6666` | 连接成功 |
+| Coordinator 端口 5432 | `nc -z localhost 5432` | 连接成功 |
+| Datanode1 端口 15432 | `nc -z localhost 15432` | 连接成功 |
+| Datanode2 端口 15433 | `nc -z localhost 15433` | 连接成功 |
+
+### 日志检查
+
+| 测试项 | 命令 | 预期结果 |
+|--------|------|----------|
+| GTM 无错误 | `docker logs opentenbase-gtm 2>&1 \| grep -i error` | 无输出 |
+| Coordinator 无错误 | `docker logs opentenbase-coordinator 2>&1 \| grep -i error` | 无输出 |
+| Datanode1 无错误 | `docker logs opentenbase-datanode1 2>&1 \| grep -i error` | 无输出 |
+| Datanode2 无错误 | `docker logs opentenbase-datanode2 2>&1 \| grep -i error` | 无输出 |
+
+### 节点注册和分片验证
+
+```bash
+# 节点注册
+docker exec opentenbase-coordinator psql -h 127.0.0.1 -U opentenbase -d postgres \
+  -c "SELECT node_name, node_type, node_host, node_port FROM pgxc_node ORDER BY node_name;"
+
+# 节点组
+docker exec opentenbase-coordinator psql -h 127.0.0.1 -U opentenbase -d postgres \
+  -c "SELECT * FROM pgxc_group;"
+
+# 分片映射
+docker exec opentenbase-coordinator psql -h 127.0.0.1 -U opentenbase -d postgres \
+  -c "SELECT * FROM pgxc_shard_map;"
+```
+
+验证项：
+- [ ] gtm_master (G), coordinator (C), datanode1 (D), datanode2 (D) 全部注册
+- [ ] default_group 包含 2 个 datanode
+- [ ] 分片均匀分布在两个 datanode
+
+---
+
+## 高级功能测试
+
+### 事务测试
+
+```sql
+-- 事务提交
+BEGIN;
+INSERT INTO t1 (id, name) VALUES (2001, 'tx_test');
+COMMIT;
+SELECT * FROM t1 WHERE name = 'tx_test';
+
+-- 事务回滚
+BEGIN;
+INSERT INTO t1 (id, name) VALUES (2002, 'rollback_test');
+ROLLBACK;
+SELECT * FROM t1 WHERE name = 'rollback_test';
+```
+
+| 测试项 | 预期结果 |
+|--------|----------|
+| 事务提交成功 | 数据可见 |
+| 事务回滚成功 | 数据不可见 |
+
+### 连接池测试
+
+```bash
+for i in {1..10}; do
+    psql -h 127.0.0.1 -U opentenbase -d postgres -c "SELECT 1;" &
+done
+wait
+```
+
+| 测试项 | 预期结果 |
+|--------|----------|
+| 10 并发连接成功 | 全部返回 1 |
+| 无连接错误 | 无错误输出 |
+
+### 数据类型测试
+
+```sql
+CREATE TABLE test_types (
+    id int PRIMARY KEY,
+    val_int integer,
+    val_text text,
+    val_json jsonb,
+    val_ts timestamp,
+    val_array integer[]
+) TO GROUP default_group;
+
+INSERT INTO test_types (id, val_int, val_text, val_json, val_ts, val_array)
+VALUES (1, 42, 'hello', '{"key": "value"}', now(), ARRAY[1,2,3]);
+
+SELECT * FROM test_types;
+DROP TABLE test_types;
+```
+
+| 测试项 | 预期结果 |
+|--------|----------|
+| 各类型插入成功 | 无错误 |
+| 数据读取正确 | 值匹配 |
+
+---
+
+## 性能基准测试
+
+### 批量插入性能
+
+```sql
+CREATE TABLE bench_insert (id int, data text) TO GROUP default_group;
+\timing on
+INSERT INTO bench_insert (id, data)
+SELECT g, 'data_' || g FROM generate_series(1, 100000) g;
+\timing off
+SELECT count(*) FROM bench_insert;
+DROP TABLE bench_insert;
+```
+
+| 测试项 | 预期结果 |
+|--------|----------|
+| 10万行插入 < 30秒 | 通过 |
+| 记录数正确 | 100000 |
+
+### 查询性能
+
+```sql
+CREATE TABLE bench_query (id int, data text) TO GROUP default_group;
+INSERT INTO bench_query (id, data)
+SELECT g, 'data_' || g FROM generate_series(1, 100000) g;
+\timing on
+SELECT count(*) FROM bench_query;
+SELECT * FROM bench_query WHERE id = 50000;
+\timing off
+DROP TABLE bench_query;
+```
+
+| 测试项 | 预期结果 |
+|--------|----------|
+| 全表计数 < 5秒 | 通过 |
+| 点查 < 1秒 | 通过 |
+
+---
+
+## 故障恢复测试
+
+### 容器重启测试
+
+```bash
+# 重启 GTM
+docker restart opentenbase-gtm
+sleep 10
+docker exec opentenbase-coordinator psql -h 127.0.0.1 -U opentenbase -d postgres -c "SELECT 1;"
+
+# 重启 Datanode1
+docker restart opentenbase-datanode1
+sleep 10
+docker exec opentenbase-coordinator psql -h 127.0.0.1 -U opentenbase -d postgres -c "SELECT count(*) FROM t1;"
+```
+
+| 测试项 | 预期结果 |
+|--------|----------|
+| GTM 重启后集群可用 | 返回 1 |
+| Datanode 重启后数据完整 | 计数正确 |
+
+---
+
+## 测试执行记录
+
+| 日期 | 测试人 | 通过/总数 | 备注 |
+|------|--------|-----------|------|
+| 2026-05-26 | Claude | 25/28 | 基础部署和 CRUD 全部通过，并发和性能测试未执行 |
+
+## 已知问题
+
+1. **`serial` 类型在分布式表中不自动填充** — 使用 `int` 类型并手动插入 id 值
+2. **不支持的分布类型** — `DISTRIBUTE BY HASH/MODULAR/ROUNDROBIN` 不支持，仅支持 `SHARD` 和 `REPLICATION`
+3. **pgbench TPC-B 测试失败** — 因分布式表 serial 类型不兼容
+4. **CentOS Stream 9 / AlmaLinux 9 `opentenbase-ctl start` 超时** — 已修复（register_nodes 顺序调整）

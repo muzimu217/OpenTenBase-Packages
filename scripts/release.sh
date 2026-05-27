@@ -139,7 +139,6 @@ create_release_notes() {
     echo ""
     echo "- [English Documentation](README.md)"
     echo "- [中文文档](README_zh.md)"
-    echo "- [Roadmap](ROADMAP.md)"
     echo "- [Contributing Guide](CONTRIBUTING.md)"
 }
 

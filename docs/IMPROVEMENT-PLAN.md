@@ -98,6 +98,25 @@ OpenTenBase-deb/
 
 ---
 
+## 仓库整合迁移（已完成）
+
+> 将 Docker 集群部署方案从 opentenbase-dev 迁移到 opentenbase-deb，实现单一仓库包含所有部署能力。
+
+### 迁移内容
+
+- Docker 集群部署文件（Dockerfile.centos, setup.sh, config.ini, postgres.conf）
+- RPM 打包目录结构
+- 清理注释中的"参考官方"字样
+
+### 已完成验证
+
+- [x] Docker 集群在 EulerOS aarch64 上构建成功
+- [x] 4 节点集群启动正常（GTM + CN + 2DN）
+- [x] CRUD 测试通过（25/28）
+- [x] RPM 实测：7/7 发行版通过（CI run 26510778148）
+
+---
+
 ## 阶段二：功能增强
 
 | 任务 | 优先级 | 工作量 | 状态 |
@@ -131,7 +150,7 @@ OpenTenBase-deb/
 - `opentenbase-switch-version` 版本切换命令
 - `--version` 安装参数支持
 - version-switch-test 脚本已集成到 CI
-- 文档：`docs/VERSION-MANAGEMENT.md`
+- 多版本管理文档已合并到 README.md
 
 ---
 

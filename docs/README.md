@@ -99,7 +99,9 @@ opentenbase-psql -h 127.0.0.1 -p 5432 -U opentenbase -d template1
 opentenbase-ctl stop
 ```
 
-### Version Switching
+### Multi-Version Management
+
+OpenTenBase supports multiple versions installed side-by-side, similar to PostgreSQL's `postgresql-14`, `postgresql-15` model. Each version has its own isolated directory tree.
 
 ```bash
 # List installed versions
@@ -107,7 +109,25 @@ opentenbase-switch-version
 
 # Switch to a specific version
 opentenbase-switch-version 5.0
+
+# Switch to another version
+opentenbase-switch-version 2.6.0
+
+# Verify current version
+readlink /etc/opentenbase/current
 ```
+
+**Versioned directory structure:**
+
+| Path | Purpose |
+|------|---------|
+| `/usr/lib/opentenbase/<version>/` | Binaries and libraries per version |
+| `/etc/opentenbase/<version>/` | Configuration per version |
+| `/var/lib/opentenbase/<version>/` | Data directory per version |
+| `/var/log/opentenbase/<version>/` | Logs per version |
+| `/etc/opentenbase/current` | Symlink to active version |
+
+**Supported versions:** `5.0` (stable), `2.6.0`, `2.5.0` (historical), `master-{sha}` (development), `latest` (alias)
 
 ---
 
@@ -152,6 +172,21 @@ opentenbase-switch-version 5.0
 | `/var/lib/opentenbase/<version>/` | Data directory |
 | `/var/log/opentenbase/<version>/` | Log directory |
 | `/usr/bin/opentenbase-ctl` | Cluster management script |
+
+---
+
+## Deployment Options
+
+OpenTenBase supports two deployment approaches:
+
+| Aspect | Pre-built Packages | Source Build |
+|--------|-------------------|--------------|
+| **Deploy time** | ~2 minutes | 30-60 minutes (first time) |
+| **Customization** | Not supported | Full control (debug, cassert, etc.) |
+| **Best for** | Production, quick testing | Development, learning, contributing |
+| **Image size** | ~500 MB | ~2 GB |
+
+**Recommendation**: Use pre-built packages for production and quick evaluation. Use source builds for development, debugging, and contributing to the project. See [source-build-guide.md](source-build-guide.md) for detailed source build instructions.
 
 ---
 
@@ -207,11 +242,89 @@ OpenTenBase-packages/
 
 ---
 
+## Release History
+
+| Release | Date | Assets | Notes |
+|---------|------|--------|-------|
+| v5.0-multi9 | 2026-05-20 | 31 | Multi-distro release (DEB + RPM) |
+| v5.0-multi8 | 2026-05-18 | 13 | Expanded distro support |
+| v5.0-1ubuntu1 | 2026-05-18 | 7 | Initial DEB release |
+| v5.0 | 2026-05-18 | 7 | First release |
+
+See [GitHub Releases](https://github.com/muzimu217/OpenTenBase-deb/releases) for all releases.
+
+---
+
+## Roadmap
+
+**Vision**: Build a long-term maintained, auto-built, multi-version coexisting official package repository for OpenTenBase, like PostgreSQL's `apt.postgresql.org` and Docker's `download.docker.com`.
+
+### Phase 1: Foundation (1-2 weeks) -- Completed
+
+- [x] Docker build environments for all target distros
+- [x] CI workflows: 30 build targets (16 DEB + 14 RPM)
+- [x] x86_64 + aarch64 dual architecture support
+- [x] Multi-version coexistence (versioned paths + symlink switching)
+- [x] Automated release pipeline (tag triggers build + test + publish)
+
+### Phase 2: Official APT Repository (1-2 months) -- In Progress
+
+- [x] Multi-version management (`opentenbase-switch-version`)
+- [x] One-click installation script
+- [ ] GPG signing integration
+- [ ] APT/RPM repository hosting (requires domain + server)
+
+### Phase 3: Cross-Platform Ecosystem (3-6 months)
+
+- [x] RPM package support (RHEL/CentOS/Rocky/Fedora/openEuler)
+- [x] Automated CI/CD pipeline
+- [ ] Standardize packaging specifications
+- [ ] Code quality review and upstream contribution
+
+### Full Distribution Support Matrix
+
+#### DEB Packages (16 build targets)
+
+| Distribution | Version | Codename | x86_64 | aarch64 |
+|-------------|---------|----------|--------|---------|
+| Ubuntu | 18.04 | bionic | yes | - |
+| Ubuntu | 18.10 | cosmic | yes | - |
+| Ubuntu | 19.04 | disco | yes | - |
+| Ubuntu | 19.10 | eoan | yes | - |
+| Ubuntu | 20.04 | focal | yes | yes |
+| Ubuntu | 22.04 | jammy | yes | yes |
+| Ubuntu | 22.10 | kinetic | yes | - |
+| Ubuntu | 23.10 | mantic | yes | - |
+| Ubuntu | 24.04 | noble | yes | yes |
+| Ubuntu | 24.10 | oracular | yes | - |
+| Ubuntu | 25.04 | plucky | yes | yes |
+| Debian | 9 | stretch | yes | - |
+| Debian | 10 | buster | yes | - |
+| Debian | 11 | bullseye | yes | yes |
+| Debian | 12 | bookworm | yes | yes |
+| Debian | 13 | trixie | yes | yes |
+
+#### RPM Packages (14 build targets)
+
+| Distribution | Version | x86_64 | aarch64 |
+|-------------|---------|--------|---------|
+| CentOS Stream | 8 | yes | - |
+| CentOS Stream | 9 | yes | yes |
+| Rocky Linux | 8 | yes | - |
+| Rocky Linux | 9 | yes | yes |
+| AlmaLinux | 8 | yes | - |
+| AlmaLinux | 9 | yes | yes |
+| Fedora | 40 | yes | yes |
+| OpenEuler | 22.03 | yes | yes |
+
+**Total**: 30 build targets, 15+ distributions, x86_64 + aarch64.
+
+---
+
 ## Known Limitations
 
 | Limitation | Description |
 |-----------|-------------|
-| Write license | OpenTenBase open-source edition is read-only; write operations require a valid license |
 | Single-machine multi-node | Not supported due to forward manager port conflict; use Docker or multi-machine deployment |
 
 ---

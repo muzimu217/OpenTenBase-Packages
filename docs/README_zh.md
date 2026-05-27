@@ -117,18 +117,35 @@ opentenbase-psql -h 127.0.0.1 -p 5432 -U opentenbase -d template1
 opentenbase-ctl stop
 ```
 
-### 版本切换
+### 多版本管理
+
+OpenTenBase 支持多个版本并行安装，类似 PostgreSQL 的 `postgresql-14`、`postgresql-15` 管理方式。每个版本拥有独立的目录树。
 
 ```bash
 # 查看已安装版本
-opentenbase-ctl versions
+opentenbase-switch-version
 
 # 切换到指定版本
-opentenbase-ctl switch 5.0
+opentenbase-switch-version 5.0
 
-# 切换到开发版
-opentenbase-ctl switch master-b612d77c
+# 切换到另一个版本
+opentenbase-switch-version 2.6.0
+
+# 验证当前版本
+readlink /etc/opentenbase/current
 ```
+
+**版本化目录结构：**
+
+| 路径 | 用途 |
+|------|------|
+| `/usr/lib/opentenbase/<version>/` | 各版本的二进制文件和库 |
+| `/etc/opentenbase/<version>/` | 各版本的配置文件 |
+| `/var/lib/opentenbase/<version>/` | 各版本的数据目录 |
+| `/var/log/opentenbase/<version>/` | 各版本的日志 |
+| `/etc/opentenbase/current` | 指向当前活跃版本的符号链接 |
+
+**支持的版本：** `5.0`（稳定版）、`2.6.0`、`2.5.0`（历史版本）、`master-{sha}`（开发版）、`latest`（别名）
 
 ---
 
@@ -173,6 +190,21 @@ opentenbase-ctl switch master-b612d77c
 | `/var/lib/opentenbase/<version>/` | 数据目录 |
 | `/var/log/opentenbase/<version>/` | 日志目录 |
 | `/usr/bin/opentenbase-ctl` | 集群管理脚本 |
+
+---
+
+## 部署方式
+
+OpenTenBase 支持两种部署方式：
+
+| 方面 | 预编译包 | 源码编译 |
+|------|---------|---------|
+| **部署时间** | ~2 分钟 | 30-60 分钟（首次） |
+| **自定义** | 不支持 | 完全控制（调试、cassert 等） |
+| **适用场景** | 生产环境、快速测试 | 开发、学习、贡献 |
+| **镜像大小** | ~500 MB | ~2 GB |
+
+**建议**：生产环境和快速体验使用预编译包，开发调试和贡献代码使用源码编译。详见 [source-build-guide.md](source-build-guide.md)。
 
 ---
 
@@ -228,11 +260,89 @@ OpenTenBase-packages/
 
 ---
 
+## 发布历史
+
+| 版本 | 日期 | 资产数 | 说明 |
+|------|------|--------|------|
+| v5.0-multi9 | 2026-05-20 | 31 | 多发行版发布（DEB + RPM） |
+| v5.0-multi8 | 2026-05-18 | 13 | 扩展发行版支持 |
+| v5.0-1ubuntu1 | 2026-05-18 | 7 | 首个 DEB 发布 |
+| v5.0 | 2026-05-18 | 7 | 首次发布 |
+
+详见 [GitHub Releases](https://github.com/muzimu217/OpenTenBase-deb/releases)。
+
+---
+
+## 路线图
+
+**愿景**：为 OpenTenBase 构建一套长期维护、自动构建、多版本共存的官方软件包仓库，像 PostgreSQL 的 `apt.postgresql.org` 和 Docker 的 `download.docker.com` 一样。
+
+### 阶段一：基础打牢（1-2 周）-- 已完成
+
+- [x] 所有目标发行版的 Docker 构建环境
+- [x] CI 工作流：30 个构建目标（16 DEB + 14 RPM）
+- [x] x86_64 + aarch64 双架构支持
+- [x] 多版本共存（版本化路径 + 符号链接切换）
+- [x] 自动发布流水线（tag 触发构建 + 测试 + 发布）
+
+### 阶段二：官方 APT 仓库（1-2 月）-- 进行中
+
+- [x] 多版本管理（`opentenbase-switch-version`）
+- [x] 一键安装脚本
+- [ ] GPG 签名集成
+- [ ] APT/RPM 仓库托管（需要域名和服务器）
+
+### 阶段三：跨平台生态（3-6 月）
+
+- [x] RPM 包支持（RHEL/CentOS/Rocky/Fedora/openEuler）
+- [x] 自动化 CI/CD 流水线
+- [ ] 打包规范化
+- [ ] 代码质量审查和上游贡献
+
+### 完整发行版支持矩阵
+
+#### DEB 包（16 个构建目标）
+
+| 发行版 | 版本 | Codename | x86_64 | aarch64 |
+|--------|------|----------|--------|---------|
+| Ubuntu | 18.04 | bionic | ✅ | - |
+| Ubuntu | 18.10 | cosmic | ✅ | - |
+| Ubuntu | 19.04 | disco | ✅ | - |
+| Ubuntu | 19.10 | eoan | ✅ | - |
+| Ubuntu | 20.04 | focal | ✅ | ✅ |
+| Ubuntu | 22.04 | jammy | ✅ | ✅ |
+| Ubuntu | 22.10 | kinetic | ✅ | - |
+| Ubuntu | 23.10 | mantic | ✅ | - |
+| Ubuntu | 24.04 | noble | ✅ | ✅ |
+| Ubuntu | 24.10 | oracular | ✅ | - |
+| Ubuntu | 25.04 | plucky | ✅ | ✅ |
+| Debian | 9 | stretch | ✅ | - |
+| Debian | 10 | buster | ✅ | - |
+| Debian | 11 | bullseye | ✅ | ✅ |
+| Debian | 12 | bookworm | ✅ | ✅ |
+| Debian | 13 | trixie | ✅ | ✅ |
+
+#### RPM 包（14 个构建目标）
+
+| 发行版 | 版本 | x86_64 | aarch64 |
+|--------|------|--------|---------|
+| CentOS Stream | 8 | ✅ | - |
+| CentOS Stream | 9 | ✅ | ✅ |
+| Rocky Linux | 8 | ✅ | - |
+| Rocky Linux | 9 | ✅ | ✅ |
+| AlmaLinux | 8 | ✅ | - |
+| AlmaLinux | 9 | ✅ | ✅ |
+| Fedora | 40 | ✅ | ✅ |
+| OpenEuler | 22.03 | ✅ | ✅ |
+
+**总计**：30 个构建目标，覆盖 15+ 发行版，支持 x86_64 + aarch64 双架构。
+
+---
+
 ## 已知限制
 
 | 限制 | 说明 |
 |------|------|
-| 写操作许可证 | OpenTenBase 开源版本为只读模式，写操作需要有效许可证 |
 | 单机多节点 | 由于 forward manager 端口冲突，不支持单机多节点部署，请使用 Docker 或多机部署 |
 
 ---
