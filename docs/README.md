@@ -19,7 +19,7 @@ English | [中文](README_zh.md)
 | Feature | Description |
 |---------|-------------|
 | **Multi-format** | DEB (`.deb`) + RPM (`.rpm`) dual format support |
-| **Multi-distro** | Ubuntu 20.04 / 22.04 / 24.04, Debian 11 / 12, RHEL/CentOS 8/9, Fedora, Rocky Linux, AlmaLinux, OpenEuler |
+| **Multi-distro** | 14 distros: Ubuntu/Debian (7), Rocky/Alma/CentOS/Fedora/openEuler (7) |
 | **Multi-arch** | x86_64 (amd64) + ARM64 (aarch64) |
 | **Multi-version coexistence** | Install v5.0 / v2.6 / v2.5 and dev versions side-by-side, switch with `opentenbase-ctl switch` |
 | **One-line install** | `curl -sSL ... \| sudo bash` — auto-detects OS, downloads correct packages, resolves dependencies |
@@ -34,35 +34,21 @@ English | [中文](README_zh.md)
 ### One-line Install (Recommended)
 
 ```bash
-curl -sLO https://github.com/muzimu217/OpenTenBase-packages/releases/latest/download/install.sh
+curl -sLO https://raw.githubusercontent.com/muzimu217/OpenTenBase-deb/main/scripts/install.sh
 sudo bash install.sh
 ```
 
 The installer automatically:
 - Detects operating system and version
-- Configures package repository (APT / YUM)
-- Downloads and installs the correct package format
+- Downloads and installs the correct package format (DEB/RPM)
 - Resolves all dependencies
 
-### APT Manual Install (Debian / Ubuntu)
+### Manual Install
 
 ```bash
-# Add repository
-curl -sSL https://github.com/muzimu217/OpenTenBase-packages/releases/latest/download/setup-apt.sh | sudo bash
-
-# Install
-sudo apt update
-sudo apt install opentenbase
-```
-
-### YUM/DNF Manual Install (RHEL / CentOS / Fedora)
-
-```bash
-# Add repository
-curl -sSL https://github.com/muzimu217/OpenTenBase-packages/releases/latest/download/setup-rpm.sh | sudo bash
-
-# Install
-sudo dnf install opentenbase
+# Download from releases: https://github.com/muzimu217/OpenTenBase-deb/releases
+# DEB: sudo apt install ./opentenbase_*.deb
+# RPM: sudo dnf install ./opentenbase-*.rpm
 ```
 
 ---
@@ -80,21 +66,17 @@ sudo dnf install opentenbase
 
 ---
 
-## Platform Support Matrix
+## Platform Support Matrix (CI Verified)
 
-| Distribution | Version | DEB | RPM | x86_64 | ARM64 | Status |
-|-------------|---------|:---:|:---:|:------:|:-----:|--------|
-| Ubuntu | 20.04 (Focal) | ✅ | — | ✅ | ✅ | Verified |
-| Ubuntu | 22.04 (Jammy) | ✅ | — | ✅ | ✅ | Verified |
-| Ubuntu | 24.04 (Noble) | ✅ | — | ✅ | ✅ | Verified |
-| Debian | 11 (Bullseye) | ✅ | — | ✅ | ✅ | Verified |
-| Debian | 12 (Bookworm) | ✅ | — | ✅ | ✅ | Verified |
-| RHEL / CentOS | 8 | — | ✅ | ✅ | ✅ | Verified |
-| RHEL / CentOS | 9 | — | ✅ | ✅ | ✅ | Verified |
-| Rocky Linux | 8 / 9 | — | ✅ | ✅ | ✅ | Verified |
-| AlmaLinux | 8 / 9 | — | ✅ | ✅ | ✅ | Verified |
-| Fedora | 39+ | — | ✅ | ✅ | ✅ | Verified |
-| OpenEuler | 22.03+ | — | ✅ | ✅ | ✅ | Verified |
+| Distribution | Version | DEB | RPM |
+|-------------|---------|:---:|:---:|
+| Ubuntu | 20.04 / 22.04 / 24.04 / 25.04 | ✅ | — |
+| Debian | 11 / 12 / 13 | ✅ | — |
+| Rocky Linux | 8 / 9 | — | ✅ |
+| AlmaLinux | 8 / 9 | — | ✅ |
+| CentOS Stream | 9 | — | ✅ |
+| Fedora | 40 | — | ✅ |
+| openEuler | 22.03 | — | ✅ |
 
 ---
 
@@ -121,13 +103,10 @@ opentenbase-ctl stop
 
 ```bash
 # List installed versions
-opentenbase-ctl versions
+opentenbase-switch-version
 
 # Switch to a specific version
-opentenbase-ctl switch 5.0
-
-# Switch to a development build
-opentenbase-ctl switch master-b612d77c
+opentenbase-switch-version 5.0
 ```
 
 ---
@@ -181,7 +160,7 @@ opentenbase-ctl switch master-b612d77c
 ### Docker Build (Recommended)
 
 ```bash
-git clone https://github.com/muzimu217/OpenTenBase-packages.git
+git clone https://github.com/muzimu217/OpenTenBase-deb.git
 cd OpenTenBase-packages
 
 # Build for all distributions
@@ -260,12 +239,12 @@ Same as OpenTenBase — [Apache License 2.0](https://www.apache.org/licenses/LIC
 
 | Resource | Link |
 |----------|------|
-| **This project** | https://github.com/muzimu217/OpenTenBase-packages |
+| **This project** | https://github.com/muzimu217/OpenTenBase-deb |
 | **Upstream repo** | https://github.com/OpenTenBase/OpenTenBase |
 | **OpenTenBase docs** | https://github.com/OpenTenBase/OpenTenBase/wiki |
-| **Issue tracker** | [Issues](https://github.com/muzimu217/OpenTenBase-packages/issues) |
+| **Issue tracker** | [Issues](https://github.com/muzimu217/OpenTenBase-deb/issues) |
 
 ---
 
 **Maintainer**: muzimu217
-**Last Updated**: 2026-05-24
+**Last Updated**: 2026-05-27
