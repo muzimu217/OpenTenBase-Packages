@@ -19,6 +19,7 @@ info() { echo -e "${YELLOW}[INFO]${NC} $1"; }
 
 OTB_USER=opentenbase
 OTB_HOME=/var/lib/opentenbase
+OTB_BIN=/usr/lib/opentenbase/5.0/bin
 GTM_PORT=6666
 DN_PORT=5433
 COORD_PORT=5432
@@ -26,6 +27,15 @@ DN_POOLER=6668
 DN_FWD=6670
 COORD_POOLER=6669
 COORD_FWD=6671
+
+# Run command as opentenbase user with correct PATH and LD_LIBRARY_PATH
+run_as_otb() {
+    if [ "$(id -un)" = "$OTB_USER" ]; then
+        PATH="$OTB_BIN:$PATH" LD_LIBRARY_PATH="$OTB_HOME/lib:${LD_LIBRARY_PATH:-}" "$@"
+    else
+        cd / && sudo -u "$OTB_USER" env PATH="$OTB_BIN:/usr/bin:/bin" LD_LIBRARY_PATH="$OTB_HOME/lib" "$@"
+    fi
+}
 
 # Ensure user exists
 id $OTB_USER 2>/dev/null || {
@@ -36,10 +46,15 @@ id $OTB_USER 2>/dev/null || {
 mkdir -p $OTB_HOME/data/{gtm,dn1,coord} /var/log/opentenbase
 chown -R $OTB_USER:$OTB_USER $OTB_HOME /var/log/opentenbase
 
-export PATH=/usr/lib/opentenbase/5.0/bin:$PATH
+# Ensure library path is configured
+echo "$OTB_HOME/lib" > /etc/ld.so.conf.d/opentenbase.conf 2>/dev/null || true
+ldconfig 2>/dev/null || true
+
+# Reduce shared memory requirements for low-memory CI containers
+export PG_SHMEM_PAGES=512
 
 info "=== 1. Initialize GTM ==="
-sudo -u $OTB_USER initgtm -Z gtm -D $OTB_HOME/data/gtm
+run_as_otb initgtm -Z gtm -D $OTB_HOME/data/gtm
 cat > $OTB_HOME/data/gtm/gtm.conf <<EOF
 listen_addresses = '*'
 port = $GTM_PORT
@@ -48,7 +63,7 @@ EOF
 chown $OTB_USER:$OTB_USER $OTB_HOME/data/gtm/gtm.conf
 
 info "=== 2. Initialize Datanode ==="
-sudo -u $OTB_USER initdb --datanode -D $OTB_HOME/data/dn1 \
+run_as_otb initdb --datanode -D $OTB_HOME/data/dn1 \
     --master_gtm_ip=localhost --master_gtm_port=$GTM_PORT --master_gtm_nodename=one
 cat >> $OTB_HOME/data/dn1/postgresql.conf <<EOF
 port = $DN_PORT
@@ -58,7 +73,7 @@ listen_addresses = '*'
 EOF
 
 info "=== 3. Initialize Coordinator ==="
-sudo -u $OTB_USER initdb --coordinator -D $OTB_HOME/data/coord \
+run_as_otb initdb --coordinator -D $OTB_HOME/data/coord \
     --master_gtm_ip=localhost --master_gtm_port=$GTM_PORT --master_gtm_nodename=one
 cat >> $OTB_HOME/data/coord/postgresql.conf <<EOF
 port = $COORD_PORT
@@ -68,7 +83,7 @@ listen_addresses = '*'
 EOF
 
 info "=== 4. Start GTM ==="
-sudo -u $OTB_USER gtm -D $OTB_HOME/data/gtm &
+run_as_otb gtm -D $OTB_HOME/data/gtm &
 sleep 2
 if pgrep -f "gtm.*$GTM_PORT" >/dev/null 2>&1; then
     pass "GTM started on port $GTM_PORT"
@@ -78,7 +93,7 @@ else
 fi
 
 info "=== 5. Start Datanode ==="
-sudo -u $OTB_USER postgres --datanode -D $OTB_HOME/data/dn1 &
+run_as_otb postgres --datanode -D $OTB_HOME/data/dn1 &
 sleep 3
 if pgrep -f "postgres.*datanode" >/dev/null 2>&1; then
     pass "Datanode started on port $DN_PORT"
@@ -88,7 +103,7 @@ else
 fi
 
 info "=== 6. Start Coordinator ==="
-sudo -u $OTB_USER postgres --coordinator -D $OTB_HOME/data/coord &
+run_as_otb postgres --coordinator -D $OTB_HOME/data/coord &
 sleep 3
 if pgrep -f "postgres.*coordinator" >/dev/null 2>&1; then
     pass "Coordinator started on port $COORD_PORT"
@@ -98,29 +113,29 @@ else
 fi
 
 info "=== 7. Register Nodes ==="
-sudo -u $OTB_USER psql -h 127.0.0.1 -p $COORD_PORT -U $OTB_USER -d postgres -c \
+run_as_otb psql -h 127.0.0.1 -p $COORD_PORT -U $OTB_USER -d postgres -c \
     "CREATE NODE dn1 WITH (type='datanode', host='localhost', port=$DN_PORT);" && \
     pass "Datanode registered on coordinator" || fail "Datanode registration failed"
 
-sudo -u $OTB_USER psql -h 127.0.0.1 -p $DN_PORT -U $OTB_USER -d postgres -c \
+run_as_otb psql -h 127.0.0.1 -p $DN_PORT -U $OTB_USER -d postgres -c \
     "CREATE NODE coord WITH (type='coordinator', host='localhost', port=$COORD_PORT);" && \
     pass "Coordinator registered on datanode" || fail "Coordinator registration failed"
 
 info "=== 8. Create Sharding Group ==="
-sudo -u $OTB_USER psql -h 127.0.0.1 -p $COORD_PORT -U $OTB_USER -d postgres -c \
+run_as_otb psql -h 127.0.0.1 -p $COORD_PORT -U $OTB_USER -d postgres -c \
     "CREATE NODE GROUP mygroup WITH (dn1);" && \
     pass "Node group created" || fail "Node group creation failed"
 
-sudo -u $OTB_USER psql -h 127.0.0.1 -p $COORD_PORT -U $OTB_USER -d postgres -c \
+run_as_otb psql -h 127.0.0.1 -p $COORD_PORT -U $OTB_USER -d postgres -c \
     "CREATE SHARDING GROUP TO GROUP mygroup;" && \
     pass "Sharding group initialized" || fail "Sharding group init failed"
 
-PSQL="sudo -u $OTB_USER psql -h 127.0.0.1 -p $COORD_PORT -U $OTB_USER -d postgres"
+PSQL="run_as_otb psql -h 127.0.0.1 -p $COORD_PORT -U $OTB_USER -d postgres"
 
 info "=== 9. CRUD Operations ==="
 
 # CREATE TABLE (sharding)
-$PSQL -c "CREATE TABLE smoke_test (id int PRIMARY KEY, name text) DISTRIBUTE BY SHARDING;" && \
+$PSQL -c "CREATE TABLE smoke_test (id int PRIMARY KEY, name text) DISTRIBUTE BY SHARD(id);" && \
     pass "CREATE sharding table" || fail "CREATE sharding table"
 
 # INSERT
@@ -170,7 +185,7 @@ $PSQL -c "CREATE TABLE license_test (id int);" && \
 $PSQL -c "DROP TABLE license_test;" 2>/dev/null || true
 
 info "=== 11. Cleanup ==="
-sudo -u $OTB_USER psql -h 127.0.0.1 -p $COORD_PORT -U $OTB_USER -d postgres -c "SELECT pgxc_pool_reload();" 2>/dev/null || true
+run_as_otb psql -h 127.0.0.1 -p $COORD_PORT -U $OTB_USER -d postgres -c "SELECT pgxc_pool_reload();" 2>/dev/null || true
 kill $(pgrep -f "postgres.*coordinator") 2>/dev/null || true
 kill $(pgrep -f "postgres.*datanode") 2>/dev/null || true
 kill $(pgrep -f "gtm") 2>/dev/null || true
