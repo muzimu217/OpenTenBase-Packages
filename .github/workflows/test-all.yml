@@ -133,15 +133,43 @@ jobs:
     steps:
       - name: Install deps
         run: |
-          dnf install -y sudo procps-ng libatomic curl util-linux python3 2>&1 || \
-            yum install -y sudo procps-ng libatomic curl util-linux python3 2>&1 || true
-          # Ensure libatomic.so.1 exists
+          # Install core packages one by one to avoid one failure blocking all
+          PKGS="sudo procps-ng curl python3"
+          for pkg in $PKGS; do
+            dnf install -y "$pkg" 2>&1 || yum install -y "$pkg" 2>&1 || echo "WARN: failed to install $pkg"
+          done
+
+          # Install libatomic with fallback to gcc-libatomic (some distros use different package name)
+          if ! dnf install -y libatomic 2>&1 && ! yum install -y libatomic 2>&1; then
+            echo "WARN: libatomic package not found, trying gcc-libatomic..."
+            dnf install -y gcc-libatomic 2>&1 || yum install -y gcc-libatomic 2>&1 || echo "WARN: failed to install libatomic"
+          fi
+          # Verify libatomic.so.1 exists
           find / -name "libatomic.so*" 2>/dev/null | head -5
+          if ! ldconfig -p 2>/dev/null | grep -q libatomic; then
+            echo "WARN: libatomic.so not found in ldconfig cache"
+          fi
+
+          # Install util-linux (provides runuser/setpriv)
+          dnf install -y util-linux 2>&1 || yum install -y util-linux 2>&1 || echo "WARN: failed to install util-linux"
+
+          # If no user-switching tool yet, try shadow-utils (provides su)
+          if ! command -v sudo && ! command -v runuser && ! command -v setpriv && ! command -v su; then
+            echo "No user-switching tool found, trying shadow-utils..."
+            dnf install -y shadow-utils 2>&1 || yum install -y shadow-utils 2>&1 || echo "WARN: failed to install shadow-utils"
+          fi
+
           # Verify at least one user-switching tool or python3 is available
           if ! command -v sudo && ! command -v runuser && ! command -v setpriv && ! command -v su && ! command -v python3; then
             echo "ERROR: no user-switching tool available"
             exit 1
           fi
+          echo "Available tools:"
+          command -v sudo || true
+          command -v runuser || true
+          command -v setpriv || true
+          command -v su || true
+          command -v python3 || true
           ldconfig || true
 
       - name: Download packages from release
