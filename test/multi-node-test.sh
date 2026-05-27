@@ -28,16 +28,17 @@ DN_FWD=6670
 COORD_POOLER=6669
 COORD_FWD=6671
 
-# Run command as opentenbase user with correct PATH and LD_LIBRARY_PATH
+# Run command as opentenbase user with correct LD_LIBRARY_PATH
+# Always use full paths ($OTB_BIN/...) to avoid PATH resolution issues
 run_as_otb() {
     if [ "$(id -un)" = "$OTB_USER" ]; then
-        PATH="$OTB_BIN:$PATH" LD_LIBRARY_PATH="$OTB_HOME/lib:${LD_LIBRARY_PATH:-}" "$@"
+        LD_LIBRARY_PATH="$OTB_HOME/lib:${LD_LIBRARY_PATH:-}" "$@"
     elif command -v sudo >/dev/null 2>&1; then
-        cd / && sudo -u "$OTB_USER" env PATH="$OTB_BIN:/usr/bin:/bin" LD_LIBRARY_PATH="$OTB_HOME/lib" "$@"
+        cd / && sudo -u "$OTB_USER" env LD_LIBRARY_PATH="$OTB_HOME/lib" "$@"
     elif command -v runuser >/dev/null 2>&1; then
-        cd / && runuser -u "$OTB_USER" -- env PATH="$OTB_BIN:/usr/bin:/bin" LD_LIBRARY_PATH="$OTB_HOME/lib" "$@"
+        cd / && runuser -u "$OTB_USER" -- env LD_LIBRARY_PATH="$OTB_HOME/lib" "$@"
     else
-        cd / && su -s /bin/bash "$OTB_USER" -c "PATH=$OTB_BIN:/usr/bin:/bin LD_LIBRARY_PATH=$OTB_HOME/lib $*"
+        cd / && su -s /bin/bash "$OTB_USER" -c "LD_LIBRARY_PATH=$OTB_HOME/lib $*"
     fi
 }
 
@@ -58,7 +59,7 @@ ldconfig 2>/dev/null || true
 export PG_SHMEM_PAGES=512
 
 info "=== 1. Initialize GTM ==="
-run_as_otb initgtm -Z gtm -D $OTB_HOME/data/gtm
+run_as_otb $OTB_BIN/initgtm -Z gtm -D $OTB_HOME/data/gtm
 cat > $OTB_HOME/data/gtm/gtm.conf <<EOF
 listen_addresses = '*'
 port = $GTM_PORT
@@ -67,8 +68,8 @@ EOF
 chown $OTB_USER:$OTB_USER $OTB_HOME/data/gtm/gtm.conf
 
 info "=== 2. Initialize Datanode ==="
-run_as_otb initdb --datanode -D $OTB_HOME/data/dn1 \
-    --master_gtm_ip=localhost --master_gtm_port=$GTM_PORT --master_gtm_nodename=one
+run_as_otb $OTB_BIN/initdb -D $OTB_HOME/data/dn1 --nodename=dn1 --nodetype=datanode \
+    --master_gtm_nodename=one --master_gtm_ip=127.0.0.1 --master_gtm_port=$GTM_PORT
 cat >> $OTB_HOME/data/dn1/postgresql.conf <<EOF
 port = $DN_PORT
 pooler_port = $DN_POOLER
@@ -77,8 +78,8 @@ listen_addresses = '*'
 EOF
 
 info "=== 3. Initialize Coordinator ==="
-run_as_otb initdb --coordinator -D $OTB_HOME/data/coord \
-    --master_gtm_ip=localhost --master_gtm_port=$GTM_PORT --master_gtm_nodename=one
+run_as_otb $OTB_BIN/initdb -D $OTB_HOME/data/coord --nodename=coord --nodetype=coordinator \
+    --master_gtm_nodename=one --master_gtm_ip=127.0.0.1 --master_gtm_port=$GTM_PORT
 cat >> $OTB_HOME/data/coord/postgresql.conf <<EOF
 port = $COORD_PORT
 pooler_port = $COORD_POOLER
@@ -87,7 +88,7 @@ listen_addresses = '*'
 EOF
 
 info "=== 4. Start GTM ==="
-run_as_otb gtm -D $OTB_HOME/data/gtm &
+run_as_otb $OTB_BIN/gtm -D $OTB_HOME/data/gtm &
 sleep 2
 if pgrep -f "gtm.*$GTM_PORT" >/dev/null 2>&1; then
     pass "GTM started on port $GTM_PORT"
@@ -97,7 +98,7 @@ else
 fi
 
 info "=== 5. Start Datanode ==="
-run_as_otb postgres --datanode -D $OTB_HOME/data/dn1 &
+run_as_otb $OTB_BIN/postgres --datanode -D $OTB_HOME/data/dn1 &
 sleep 3
 if pgrep -f "postgres.*datanode" >/dev/null 2>&1; then
     pass "Datanode started on port $DN_PORT"
@@ -107,7 +108,7 @@ else
 fi
 
 info "=== 6. Start Coordinator ==="
-run_as_otb postgres --coordinator -D $OTB_HOME/data/coord &
+run_as_otb $OTB_BIN/postgres --coordinator -D $OTB_HOME/data/coord &
 sleep 3
 if pgrep -f "postgres.*coordinator" >/dev/null 2>&1; then
     pass "Coordinator started on port $COORD_PORT"
@@ -117,24 +118,24 @@ else
 fi
 
 info "=== 7. Register Nodes ==="
-run_as_otb psql -h 127.0.0.1 -p $COORD_PORT -U $OTB_USER -d postgres -c \
+run_as_otb $OTB_BIN/psql -h 127.0.0.1 -p $COORD_PORT -U $OTB_USER -d postgres -c \
     "CREATE NODE dn1 WITH (type='datanode', host='localhost', port=$DN_PORT);" && \
     pass "Datanode registered on coordinator" || fail "Datanode registration failed"
 
-run_as_otb psql -h 127.0.0.1 -p $DN_PORT -U $OTB_USER -d postgres -c \
+run_as_otb $OTB_BIN/psql -h 127.0.0.1 -p $DN_PORT -U $OTB_USER -d postgres -c \
     "CREATE NODE coord WITH (type='coordinator', host='localhost', port=$COORD_PORT);" && \
     pass "Coordinator registered on datanode" || fail "Coordinator registration failed"
 
 info "=== 8. Create Sharding Group ==="
-run_as_otb psql -h 127.0.0.1 -p $COORD_PORT -U $OTB_USER -d postgres -c \
+run_as_otb $OTB_BIN/psql -h 127.0.0.1 -p $COORD_PORT -U $OTB_USER -d postgres -c \
     "CREATE NODE GROUP mygroup WITH (dn1);" && \
     pass "Node group created" || fail "Node group creation failed"
 
-run_as_otb psql -h 127.0.0.1 -p $COORD_PORT -U $OTB_USER -d postgres -c \
+run_as_otb $OTB_BIN/psql -h 127.0.0.1 -p $COORD_PORT -U $OTB_USER -d postgres -c \
     "CREATE SHARDING GROUP TO GROUP mygroup;" && \
     pass "Sharding group initialized" || fail "Sharding group init failed"
 
-PSQL="run_as_otb psql -h 127.0.0.1 -p $COORD_PORT -U $OTB_USER -d postgres"
+PSQL="run_as_otb $OTB_BIN/psql -h 127.0.0.1 -p $COORD_PORT -U $OTB_USER -d postgres"
 
 info "=== 9. CRUD Operations ==="
 
@@ -189,7 +190,7 @@ $PSQL -c "CREATE TABLE license_test (id int);" && \
 $PSQL -c "DROP TABLE license_test;" 2>/dev/null || true
 
 info "=== 11. Cleanup ==="
-run_as_otb psql -h 127.0.0.1 -p $COORD_PORT -U $OTB_USER -d postgres -c "SELECT pgxc_pool_reload();" 2>/dev/null || true
+run_as_otb $OTB_BIN/psql -h 127.0.0.1 -p $COORD_PORT -U $OTB_USER -d postgres -c "SELECT pgxc_pool_reload();" 2>/dev/null || true
 kill $(pgrep -f "postgres.*coordinator") 2>/dev/null || true
 kill $(pgrep -f "postgres.*datanode") 2>/dev/null || true
 kill $(pgrep -f "gtm") 2>/dev/null || true

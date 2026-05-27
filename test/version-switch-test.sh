@@ -25,16 +25,17 @@ OTB_BIN=/usr/lib/opentenbase/5.0/bin
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_DIR="$(dirname "$SCRIPT_DIR")"
 
-# Run command as opentenbase user with correct PATH and LD_LIBRARY_PATH
+# Run command as opentenbase user with correct LD_LIBRARY_PATH
+# Always use full paths ($OTB_BIN/...) to avoid PATH resolution issues
 run_as_otb() {
     if [ "$(id -un)" = "$OTB_USER" ]; then
-        PATH="$OTB_BIN:$PATH" LD_LIBRARY_PATH="$OTB_HOME/lib:${LD_LIBRARY_PATH:-}" "$@"
+        LD_LIBRARY_PATH="$OTB_HOME/lib:${LD_LIBRARY_PATH:-}" "$@"
     elif command -v sudo >/dev/null 2>&1; then
-        cd / && sudo -u "$OTB_USER" env PATH="$OTB_BIN:/usr/bin:/bin" LD_LIBRARY_PATH="$OTB_HOME/lib" "$@"
+        cd / && sudo -u "$OTB_USER" env LD_LIBRARY_PATH="$OTB_HOME/lib" "$@"
     elif command -v runuser >/dev/null 2>&1; then
-        cd / && runuser -u "$OTB_USER" -- env PATH="$OTB_BIN:/usr/bin:/bin" LD_LIBRARY_PATH="$OTB_HOME/lib" "$@"
+        cd / && runuser -u "$OTB_USER" -- env LD_LIBRARY_PATH="$OTB_HOME/lib" "$@"
     else
-        cd / && su -s /bin/bash "$OTB_USER" -c "PATH=$OTB_BIN:/usr/bin:/bin LD_LIBRARY_PATH=$OTB_HOME/lib $*"
+        cd / && su -s /bin/bash "$OTB_USER" -c "LD_LIBRARY_PATH=$OTB_HOME/lib $*"
     fi
 }
 
@@ -174,7 +175,7 @@ if command -v opentenbase-ctl >/dev/null 2>&1; then
     fi
 
     # SQL test
-    SQL_RESULT=$(run_as_otb psql -h 127.0.0.1 -p 5432 -U $OTB_USER -d postgres -t -A -c "SELECT 1;" 2>&1 || echo "FAIL")
+    SQL_RESULT=$(run_as_otb $OTB_BIN/psql -h 127.0.0.1 -p 5432 -U $OTB_USER -d postgres -t -A -c "SELECT 1;" 2>&1 || echo "FAIL")
     if [ "$SQL_RESULT" = "1" ]; then
         pass "SQL connection on v5.0"
     else
@@ -182,16 +183,16 @@ if command -v opentenbase-ctl >/dev/null 2>&1; then
     fi
 
     # CRUD test
-    run_as_otb psql -h 127.0.0.1 -p 5432 -U $OTB_USER -d postgres -c "CREATE TABLE vtest (id int, name text);" 2>&1 && \
+    run_as_otb $OTB_BIN/psql -h 127.0.0.1 -p 5432 -U $OTB_USER -d postgres -c "CREATE TABLE vtest (id int, name text);" 2>&1 && \
         pass "CREATE TABLE on v5.0" || fail "CREATE TABLE on v5.0"
 
-    run_as_otb psql -h 127.0.0.1 -p 5432 -U $OTB_USER -d postgres -c "INSERT INTO vtest VALUES (1, 'v5test');" 2>&1 && \
+    run_as_otb $OTB_BIN/psql -h 127.0.0.1 -p 5432 -U $OTB_USER -d postgres -c "INSERT INTO vtest VALUES (1, 'v5test');" 2>&1 && \
         pass "INSERT on v5.0" || fail "INSERT on v5.0"
 
-    RESULT=$(run_as_otb psql -h 127.0.0.1 -p 5432 -U $OTB_USER -d postgres -t -A -c "SELECT name FROM vtest WHERE id=1;" 2>&1)
+    RESULT=$(run_as_otb $OTB_BIN/psql -h 127.0.0.1 -p 5432 -U $OTB_USER -d postgres -t -A -c "SELECT name FROM vtest WHERE id=1;" 2>&1)
     [ "$RESULT" = "v5test" ] && pass "SELECT on v5.0" || fail "SELECT on v5.0 (got $RESULT)"
 
-    run_as_otb psql -h 127.0.0.1 -p 5432 -U $OTB_USER -d postgres -c "DROP TABLE vtest;" 2>&1
+    run_as_otb $OTB_BIN/psql -h 127.0.0.1 -p 5432 -U $OTB_USER -d postgres -c "DROP TABLE vtest;" 2>&1
 
     # Stop cluster
     sudo opentenbase-ctl stop 2>&1 && pass "Cluster stopped cleanly" || fail "Cluster stop failed"
