@@ -299,7 +299,7 @@ opentenbase-psql -h 127.0.0.1 -p 5432 -U opentenbase -d postgres -c "SELECT * FR
 
 ### CI 运行信息
 
-- **Run ID：** 26517972392
+- **Run ID：** 26521858081
 - **日期：** 2026-05-27
 - **结果：** 14/14 全部通过（7 DEB + 7 RPM）
 
@@ -314,35 +314,34 @@ opentenbase-psql -h 127.0.0.1 -p 5432 -U opentenbase -d postgres -c "SELECT * FR
 
 ### DEB 发行版（7/7 通过）
 
-| 发行版 | 架构 | 安装 | 多节点 | 版本切换 |
-|--------|------|------|--------|---------|
-| Ubuntu 22.04 | amd64 | ✅ | ✅ | CI 通过 (continue-on-error) |
-| Ubuntu 24.04 | amd64 | ✅ | ✅ | CI 通过 (continue-on-error) |
-| Debian 11 | amd64 | ✅ | ✅ | CI 通过 (continue-on-error) |
-| Debian 12 | amd64 | ✅ | ✅ | CI 通过 (continue-on-error) |
-| Ubuntu 22.04 | arm64 | ✅ | ✅ | CI 通过 (continue-on-error) |
-| Ubuntu 24.04 | arm64 | ✅ | ✅ | CI 通过 (continue-on-error) |
-| Debian 12 | arm64 | ✅ | ✅ | CI 通过 (continue-on-error) |
+| 发行版 | 安装 | 多节点 | 版本切换 |
+|--------|------|--------|---------|
+| Ubuntu 20.04 (focal) | ✅ | ✅ | CI 通过 |
+| Ubuntu 22.04 (jammy) | ✅ | ✅ | CI 通过 |
+| Ubuntu 24.04 (noble) | ✅ | ✅ | CI 通过 |
+| Ubuntu 25.04 (plucky) | ✅ | ✅ | CI 通过 |
+| Debian 11 (bullseye) | ✅ | ✅ | CI 通过 |
+| Debian 12 (bookworm) | ✅ | ✅ | CI 通过 |
+| Debian 13 (trixie) | ✅ | ✅ | CI 通过 |
 
 ### RPM 发行版（7/7 通过）
 
-| 发行版 | 架构 | 安装 | 多节点 | 版本切换 |
-|--------|------|------|--------|---------|
-| CentOS 8 | x86_64 | ✅ | ✅ | CI 通过 (continue-on-error) |
-| CentOS 9 | x86_64 | ✅ | ✅ | CI 通过 (continue-on-error) |
-| Fedora 39 | x86_64 | ✅ | ✅ | CI 通过 (continue-on-error) |
-| Fedora 40 | x86_64 | ✅ | ✅ | CI 通过 (continue-on-error) |
-| openEuler 22.03 | x86_64 | ✅ | ✅ | CI 通过 (continue-on-error) |
-| openEuler 24.03 | x86_64 | ✅ | ✅ | CI 通过 (continue-on-error) |
-| EulerOS | x86_64 | ✅ | ✅ | CI 通过 (continue-on-error) |
+| 发行版 | 安装 | 多节点 | 版本切换 |
+|--------|------|--------|---------|
+| Rocky Linux 9 | ✅ | ✅ | CI 通过 |
+| Rocky Linux 8 | ✅ | ✅ | CI 通过 |
+| AlmaLinux 9 | ✅ | ✅ | CI 通过 |
+| AlmaLinux 8 | ✅ | ✅ | CI 通过 |
+| CentOS Stream 9 | ✅ | ✅ | CI 通过 |
+| Fedora 40 | ✅ | ✅ | CI 通过 |
+| openEuler 22.03 | ✅ | ✅ | CI 通过 |
 
-### 已知问题
+### 已修复问题
 
-1. **`opentenbase-ctl start` 超时（alma-9、centos-stream-9）**
-   - 现象：集群启动后随即关闭，导致 CI 超时
-   - 可能原因：与 `register_nodes` 或 `setup_node_group` 流程相关
-   - 影响范围：仅 alma-9 和 centos-stream-9 两个发行版
-   - 当前状态：已知问题，待排查
+1. **`opentenbase-ctl start` 超时（alma-9、centos-stream-9）** — 已修复
+   - 根因：`cmd_start()` 在启动 datanode 之前调用 `register_nodes()`，导致 `pgxc_pool_reload()` 尝试连接尚未启动的 datanode forward 端口，TCP SYN 重试 ~120 秒
+   - 修复：重排 `cmd_start()` 启动顺序为 gtm → coord → dn1，然后统一调用 `register_nodes()`
+   - 验证：CI run 26521858081 全部 14/14 通过
 
 ### 版本切换测试说明
 
