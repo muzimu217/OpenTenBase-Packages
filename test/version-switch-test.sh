@@ -164,9 +164,9 @@ info "=== Test 5: Init and start cluster (v5.0) ==="
 
 if command -v opentenbase-ctl >/dev/null 2>&1; then
     sudo opentenbase-ctl stop 2>/dev/null || true
-    sudo opentenbase-ctl init 2>&1 && pass "opentenbase-ctl init succeeded" || fail "opentenbase-ctl init failed"
+    timeout 60 sudo opentenbase-ctl init 2>&1 && pass "opentenbase-ctl init succeeded" || fail "opentenbase-ctl init failed"
 
-    sudo opentenbase-ctl start 2>&1 && pass "opentenbase-ctl start succeeded" || fail "opentenbase-ctl start failed"
+    timeout 120 sudo opentenbase-ctl start 2>&1 && pass "opentenbase-ctl start succeeded" || fail "opentenbase-ctl start failed"
 
     sleep 5
 
@@ -205,7 +205,7 @@ if command -v opentenbase-ctl >/dev/null 2>&1; then
     run_as_otb $OTB_BIN/psql -h 127.0.0.1 -p 5432 -U $OTB_USER -d postgres -c "DROP TABLE vtest;" 2>&1
 
     # Stop cluster
-    sudo opentenbase-ctl stop 2>&1 && pass "Cluster stopped cleanly" || fail "Cluster stop failed"
+    timeout 30 sudo opentenbase-ctl stop 2>&1 && pass "Cluster stopped cleanly" || fail "Cluster stop failed"
     sleep 2
 fi
 
@@ -233,11 +233,11 @@ if [ -d /usr/lib/opentenbase/2.6.0/bin ]; then
 
         # Init and start
         sudo opentenbase-ctl stop 2>/dev/null || true
-        sudo opentenbase-ctl init 2>&1 && pass "v2.6.0 init" || fail "v2.6.0 init"
-        sudo opentenbase-ctl start 2>&1 && pass "v2.6.0 start" || fail "v2.6.0 start"
+        timeout 60 sudo opentenbase-ctl init 2>&1 && pass "v2.6.0 init" || fail "v2.6.0 init"
+        timeout 120 sudo opentenbase-ctl start 2>&1 && pass "v2.6.0 start" || fail "v2.6.0 start"
 
         sleep 5
-        sudo opentenbase-ctl stop 2>&1 && pass "v2.6.0 stop" || fail "v2.6.0 stop"
+        timeout 30 sudo opentenbase-ctl stop 2>&1 && pass "v2.6.0 stop" || fail "v2.6.0 stop"
         sleep 2
     fi
 
