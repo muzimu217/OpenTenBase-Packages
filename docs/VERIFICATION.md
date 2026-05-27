@@ -350,5 +350,20 @@ opentenbase-psql -h 127.0.0.1 -p 5432 -U opentenbase -d postgres -c "SELECT * FR
 
 ---
 
+## 九、EulerOS ARM64 性能测试
+
+**环境**: DevEnvVM_fYcIXl (ARM, 4vCPUs, 8GiB, EulerOS)
+
+| 测试项 | 结果 |
+|--------|------|
+| 并发连接 (20路) | 20/20 成功, 170ms 总耗时, 8ms 平均 |
+| 顺序 SELECT (100次) | 27ms 平均延迟, 36 QPS |
+| 并发 SELECT (50路) | 111-118 QPS |
+| 并发压力 (100路) | 122 QPS |
+
+已知限制: pgbench TPC-B 测试因分布式表 serial 类型不兼容而失败
+
+---
+
 **验证完成日期：** 2026-05-18
 **最后更新：** 2026-05-27
