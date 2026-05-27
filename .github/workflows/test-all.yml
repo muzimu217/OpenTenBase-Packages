@@ -114,9 +114,6 @@ jobs:
           - name: centos-stream-9
             container: quay.io/centos/centos:stream9
             pattern: centos-stream-9
-          - name: centos-stream-8
-            container: quay.io/centos/centos:stream8
-            pattern: centos-stream-8
           - name: fedora-40
             container: fedora:40
             pattern: fedora-40
