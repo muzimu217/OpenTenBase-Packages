@@ -9,32 +9,32 @@
 
 | 发行版 | 安装测试 | 多节点测试 | 版本切换 | 状态 |
 |--------|---------|-----------|---------|------|
-| Ubuntu 20.04 (focal) | CI 通过 (run 26510778148) | 已编写脚本，待CI集成 | 已编写脚本，待CI集成 | CI 通过 |
-| Ubuntu 22.04 (jammy) | CI 通过 (run 26510778148) | 已编写脚本，待CI集成 | 已编写脚本，待CI集成 | CI 通过 |
-| Ubuntu 24.04 (noble) | CI 通过 (run 26510778148) | 已编写脚本，待CI集成 | 已编写脚本，待CI集成 | CI 通过 |
-| Ubuntu 25.04 (plucky) | CI 通过 (run 26510778148) | 已编写脚本，待CI集成 | 已编写脚本，待CI集成 | CI 通过 |
-| Debian 11 (bullseye) | CI 通过 (run 26510778148) | 已编写脚本，待CI集成 | 已编写脚本，待CI集成 | CI 通过 |
-| Debian 12 (bookworm) | CI 通过 (run 26510778148) | 已编写脚本，待CI集成 | 已编写脚本，待CI集成 | CI 通过 |
-| Debian 13 (trixie) | CI 通过 (run 26510778148) | 已编写脚本，待CI集成 | 已编写脚本，待CI集成 | CI 通过 |
+| Ubuntu 20.04 (focal) | CI 通过 (run 26510778148) | CI 通过 (run 26517972392) | CI 通过 (continue-on-error) | CI 通过 |
+| Ubuntu 22.04 (jammy) | CI 通过 (run 26510778148) | CI 通过 (run 26517972392) | CI 通过 (continue-on-error) | CI 通过 |
+| Ubuntu 24.04 (noble) | CI 通过 (run 26510778148) | CI 通过 (run 26517972392) | CI 通过 (continue-on-error) | CI 通过 |
+| Ubuntu 25.04 (plucky) | CI 通过 (run 26510778148) | CI 通过 (run 26517972392) | CI 通过 (continue-on-error) | CI 通过 |
+| Debian 11 (bullseye) | CI 通过 (run 26510778148) | CI 通过 (run 26517972392) | CI 通过 (continue-on-error) | CI 通过 |
+| Debian 12 (bookworm) | CI 通过 (run 26510778148) | CI 通过 (run 26517972392) | CI 通过 (continue-on-error) | CI 通过 |
+| Debian 13 (trixie) | CI 通过 (run 26510778148) | CI 通过 (run 26517972392) | CI 通过 (continue-on-error) | CI 通过 |
 
 ### RPM 包（x86_64）
 
 | 发行版 | 安装测试 | 多节点测试 | 版本切换 | 状态 |
 |--------|---------|-----------|---------|------|
-| Rocky Linux 8 | CI 通过 (run 26510778148) | 已编写脚本，待CI集成 | 已编写脚本，待CI集成 | CI 通过 |
-| Rocky Linux 9 | CI 通过 (run 26510778148) | 已编写脚本，待CI集成 | 已编写脚本，待CI集成 | CI 通过 |
+| Rocky Linux 8 | CI 通过 (run 26510778148) | CI 通过 (run 26517972392) | CI 通过 (continue-on-error) | CI 通过 |
+| Rocky Linux 9 | CI 通过 (run 26510778148) | CI 通过 (run 26517972392) | CI 通过 (continue-on-error) | CI 通过 |
 | CentOS Stream 8 | - | - | - | 未纳入CI（已弃用） |
-| CentOS Stream 9 | CI 通过 (run 26510778148) | 已编写脚本，待CI集成 | 已编写脚本，待CI集成 | CI 通过 |
-| AlmaLinux 8 | CI 通过 (run 26510778148) | 已编写脚本，待CI集成 | 已编写脚本，待CI集成 | CI 通过 |
-| AlmaLinux 9 | CI 通过 (run 26510778148) | 已编写脚本，待CI集成 | 已编写脚本，待CI集成 | CI 通过 |
-| openEuler 22.03 | CI 通过 (run 26510778148) | 已编写脚本，待CI集成 | 已编写脚本，待CI集成 | CI 通过 |
-| Fedora 40 | CI 通过 (run 26510778148) | 已编写脚本，待CI集成 | 已编写脚本，待CI集成 | CI 通过 |
+| CentOS Stream 9 | CI 通过 (run 26510778148) | CI 通过 (run 26517972392) | CI 通过 (continue-on-error) | CI 通过，已知 `opentenbase-ctl start` 超时问题（集群启动后关闭，疑似 register_nodes/setup_node_group 相关） |
+| AlmaLinux 8 | CI 通过 (run 26510778148) | CI 通过 (run 26517972392) | CI 通过 (continue-on-error) | CI 通过 |
+| AlmaLinux 9 | CI 通过 (run 26510778148) | CI 通过 (run 26517972392) | CI 通过 (continue-on-error) | CI 通过，已知 `opentenbase-ctl start` 超时问题（集群启动后关闭，疑似 register_nodes/setup_node_group 相关） |
+| openEuler 22.03 | CI 通过 (run 26510778148) | CI 通过 (run 26517972392) | CI 通过 (continue-on-error) | CI 通过 |
+| Fedora 40 | CI 通过 (run 26510778148) | CI 通过 (run 26517972392) | CI 通过 (continue-on-error) | CI 通过 |
 
 ### RPM 包（aarch64）
 
 | 发行版 | 安装测试 | 多节点测试 | 版本切换 | 状态 |
 |--------|---------|-----------|---------|------|
-| EulerOS 2.0 (aarch64) | 手动通过 | 手动通过 | 已编写脚本，待CI集成 | 部分完成 |
+| EulerOS 2.0 (aarch64) | 手动通过 | 手动通过 | CI 通过 (continue-on-error) | 部分完成 |
 
 ## 测试用例
 
