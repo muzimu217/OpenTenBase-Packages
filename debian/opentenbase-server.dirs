@@ -2,4 +2,4 @@ var/lib/opentenbase
 var/log/opentenbase
 var/run/opentenbase
 etc/opentenbase
-usr/lib/opentenbase/lib/postgresql
+usr/lib/opentenbase/5.0/lib/postgresql
