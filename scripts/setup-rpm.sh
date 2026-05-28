@@ -15,7 +15,7 @@ log_warn()  { echo -e "${YELLOW}[WARN]${NC} $1"; }
 log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 log_step()  { echo -e "${BLUE}[STEP]${NC} $1"; }
 
-REPO_BASE_URL="https://muzimu217.github.io/opentenbase-deb/rpm"
+REPO_BASE_URL="https://muzimu217.github.io/OpenTenBase-deb/rpm"
 GPG_KEY_URL="${REPO_BASE_URL}/gpg-key.asc"
 
 check_root() {
