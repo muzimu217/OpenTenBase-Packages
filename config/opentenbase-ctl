@@ -277,15 +277,17 @@ cmd_status() {
                     echo "gtm:   RUNNING"
                 else echo "gtm:   STOPPED"; ok=0; fi ;;
             dn1)
-                if [ -f "$DN1_PGDATA/postmaster.pid" ] && \
-                   kill -0 "$(head -1 "$DN1_PGDATA/postmaster.pid")" 2>/dev/null; then
+                if pgrep -u "$OTB_USER" -f "postgres.*--datanode.*-D $DN1_PGDATA" >/dev/null 2>&1 || \
+                   ([ -f "$DN1_PGDATA/postmaster.pid" ] && \
+                    kill -0 "$(head -1 "$DN1_PGDATA/postmaster.pid")" 2>/dev/null); then
                     echo "dn1:   RUNNING"
                 else echo "dn1:   STOPPED"; ok=0; fi ;;
             coord)
-                if [ -f "$COORD_PGDATA/postmaster.pid" ] && \
-                   kill -0 "$(head -1 "$COORD_PGDATA/postmaster.pid")" 2>/dev/null; then
-                    echo "coord:   RUNNING"
-                else echo "coord:   STOPPED"; ok=0; fi ;;
+                if pgrep -u "$OTB_USER" -f "postgres.*--coordinator.*-D $COORD_PGDATA" >/dev/null 2>&1 || \
+                   ([ -f "$COORD_PGDATA/postmaster.pid" ] && \
+                    kill -0 "$(head -1 "$COORD_PGDATA/postmaster.pid")" 2>/dev/null); then
+                    echo "coord: RUNNING"
+                else echo "coord: STOPPED"; ok=0; fi ;;
         esac
     done
     [ $ok -eq 1 ] && return 0 || return 3

@@ -15,7 +15,22 @@ log_warn()  { echo -e "${YELLOW}[WARN]${NC} $1"; }
 log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 log_step()  { echo -e "${BLUE}[STEP]${NC} $1"; }
 
-REPO_BASE_URL="https://muzimu217.github.io/OpenTenBase-deb/rpm"
+# Auto-detect fastest mirror (Gitee for China, GitHub for others)
+detect_mirror() {
+    local gitee_url="https://blackEvil217.gitee.io/opentenbase-packages/rpm"
+    local github_url="https://muzimu217.github.io/OpenTenBase-deb/rpm"
+
+    # Try Gitee first (faster in China)
+    if curl -sL --connect-timeout 3 --max-time 5 "${gitee_url}/gpg-key.asc" -o /dev/null 2>/dev/null; then
+        REPO_BASE_URL="$gitee_url"
+        log_info "Using Gitee mirror (faster in China)"
+    else
+        REPO_BASE_URL="$github_url"
+        log_info "Using GitHub repository"
+    fi
+}
+
+detect_mirror
 GPG_KEY_URL="${REPO_BASE_URL}/gpg-key.asc"
 
 check_root() {

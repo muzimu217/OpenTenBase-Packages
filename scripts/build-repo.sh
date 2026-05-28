@@ -327,10 +327,11 @@ XMLEOF
     log_warn "  Minimal RPM metadata created (install createrepo_c for full metadata)"
 }
 
-# Create index page for GitHub Pages
+# Create index pages for GitHub Pages (root + subdirectories)
 create_index_page() {
     local outdir=$1
 
+    # Root index.html
     cat > "$outdir/index.html" << 'EOF'
 <!DOCTYPE html>
 <html>
@@ -370,6 +371,88 @@ sudo dnf install opentenbase</pre>
             <li><a href="https://github.com/OpenTenBase/OpenTenBase">OpenTenBase Upstream</a></li>
         </ul>
     </div>
+</body>
+</html>
+EOF
+
+    # Subdirectory index pages (GitHub Pages doesn't auto-list directories)
+    mkdir -p "$outdir/apt" "$outdir/rpm"
+
+    cat > "$outdir/apt/index.html" << 'EOF'
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>OpenTenBase APT Repository</title>
+    <style>
+        body { font-family: -apple-system, sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; line-height: 1.6; }
+        h1 { color: #333; }
+        pre { background: #f5f5f5; padding: 15px; border-radius: 5px; overflow-x: auto; }
+        a { color: #0366d6; }
+    </style>
+</head>
+<body>
+    <h1>OpenTenBase APT Repository</h1>
+    <p>APT repository for Ubuntu and Debian.</p>
+    <h2>Quick Install</h2>
+    <pre>curl -sSL https://raw.githubusercontent.com/muzimu217/OpenTenBase-deb/main/scripts/setup-apt.sh | sudo bash
+sudo apt update
+sudo apt install opentenbase</pre>
+    <h2>Repository Structure</h2>
+    <ul>
+EOF
+
+    # Dynamically list codename directories
+    for codename_dir in "$outdir/apt"/*/; do
+        [ -d "$codename_dir" ] || continue
+        local codename
+        codename=$(basename "$codename_dir")
+        [ "$codename" = "index.html" ] && continue
+        echo "        <li><a href=\"$codename/\">$codename</a></li>" >> "$outdir/apt/index.html"
+    done
+
+    cat >> "$outdir/apt/index.html" << 'EOF'
+    </ul>
+    <p><a href="../">Back to repository home</a></p>
+</body>
+</html>
+EOF
+
+    cat > "$outdir/rpm/index.html" << 'EOF'
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>OpenTenBase RPM Repository</title>
+    <style>
+        body { font-family: -apple-system, sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; line-height: 1.6; }
+        h1 { color: #333; }
+        pre { background: #f5f5f5; padding: 15px; border-radius: 5px; overflow-x: auto; }
+        a { color: #0366d6; }
+    </style>
+</head>
+<body>
+    <h1>OpenTenBase RPM Repository</h1>
+    <p>RPM repository for RHEL, CentOS, Rocky, Alma, Fedora, and openEuler.</p>
+    <h2>Quick Install</h2>
+    <pre>curl -sSL https://raw.githubusercontent.com/muzimu217/OpenTenBase-deb/main/scripts/setup-rpm.sh | sudo bash
+sudo dnf install opentenbase</pre>
+    <h2>Repository Structure</h2>
+    <ul>
+EOF
+
+    # Dynamically list distro/arch directories
+    for distro_dir in "$outdir/rpm"/*/; do
+        [ -d "$distro_dir" ] || continue
+        local distro
+        distro=$(basename "$distro_dir")
+        [ "$distro" = "index.html" ] && continue
+        echo "        <li><a href=\"$distro/\">$distro</a></li>" >> "$outdir/rpm/index.html"
+    done
+
+    cat >> "$outdir/rpm/index.html" << 'EOF'
+    </ul>
+    <p><a href="../">Back to repository home</a></p>
 </body>
 </html>
 EOF
