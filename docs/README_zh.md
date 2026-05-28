@@ -100,6 +100,41 @@ opentenbase-psql -h 127.0.0.1 -p 5432 -U opentenbase -d template1
 opentenbase-ctl stop
 ```
 
+### Docker Compose 部署
+
+使用 Docker Compose 一键部署完整的 OpenTenBase 集群（GTM + Coordinator + 2 个 Datanode）：
+
+```bash
+# 下载部署脚本
+curl -sLO https://raw.githubusercontent.com/muzimu217/OpenTenBase-deb/main/docker/test-docker.sh
+bash test-docker.sh
+
+# 启动集群
+cd /tmp/otb-docker/compose
+docker compose up -d --build
+
+# 连接数据库
+docker compose exec coordinator psql -h 127.0.0.1 -U opentenbase -d postgres
+
+# 停止集群
+docker compose down -v
+```
+
+> **中国大陆用户注意**：由于 Docker Hub 在国内无法直接访问，需要配置 Docker 镜像加速器。编辑 `/etc/docker/daemon.json`：
+>
+> ```json
+> {
+>   "registry-mirrors": ["https://docker.m.daocloud.io"]
+> }
+> ```
+>
+> 然后重启 Docker：`sudo systemctl restart docker`
+>
+> 常用镜像加速器：
+> - DaoCloud: `https://docker.m.daocloud.io`
+> - 腾讯云: `https://mirror.ccs.tencentyun.com`
+> - 华为云: `https://repo.huaweicloud.com`
+
 ### 多版本管理
 
 OpenTenBase 支持多个版本并行安装，类似 PostgreSQL 的 `postgresql-14`、`postgresql-15` 管理方式。每个版本拥有独立的目录树。

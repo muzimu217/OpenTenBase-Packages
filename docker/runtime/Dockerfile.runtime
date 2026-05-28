@@ -13,7 +13,8 @@ RUN dnf install -y \
 
 # Install OpenTenBase from extracted files
 COPY extracted/ /
-RUN ldconfig
+RUN chmod -R go+rX /usr/lib/opentenbase/5.0/bin/ /usr/lib/opentenbase/5.0/lib/ \
+    && ldconfig
 
 # Create opentenbase user and set up directories
 RUN useradd -m -s /bin/bash opentenbase \

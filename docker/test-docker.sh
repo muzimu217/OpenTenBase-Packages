@@ -118,6 +118,8 @@ services:
     image: opentenbase-runtime:latest
     container_name: opentenbase-gtm
     hostname: gtm
+    security_opt:
+      - apparmor:unconfined
     environment:
       - NODE_TYPE=gtm
       - NODE_NAME=gtm
@@ -142,6 +144,8 @@ services:
     image: opentenbase-runtime:latest
     container_name: opentenbase-coordinator
     hostname: coordinator
+    security_opt:
+      - apparmor:unconfined
     depends_on:
       gtm:
         condition: service_healthy
@@ -172,6 +176,8 @@ services:
     image: opentenbase-runtime:latest
     container_name: opentenbase-datanode1
     hostname: datanode1
+    security_opt:
+      - apparmor:unconfined
     depends_on:
       gtm:
         condition: service_healthy
@@ -203,6 +209,8 @@ services:
     image: opentenbase-runtime:latest
     container_name: opentenbase-datanode2
     hostname: datanode2
+    security_opt:
+      - apparmor:unconfined
     depends_on:
       gtm:
         condition: service_healthy

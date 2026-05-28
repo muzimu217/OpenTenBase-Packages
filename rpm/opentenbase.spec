@@ -7,6 +7,7 @@ URL:            https://github.com/OpenTenBase/OpenTenBase
 Source0:        opentenbase-%{version}-%{_arch}.tar.gz
 Source1:        opentenbase-ctl
 Source2:        pg_hba.conf.template
+Source3:        opentenbase-psql
 
 %define otb_ver %{version}
 %define otb_prefix /usr/lib/opentenbase/%{otb_ver}
@@ -457,6 +458,9 @@ done
 
 # Install opentenbase-ctl management script
 install -m 755 %{SOURCE1} %{buildroot}/usr/bin/opentenbase-ctl
+
+# Install opentenbase-psql wrapper
+install -m 755 %{SOURCE3} %{buildroot}/usr/bin/opentenbase-psql
 
 # Install pg_hba.conf template
 mkdir -p %{buildroot}/etc/opentenbase/%{otb_ver}

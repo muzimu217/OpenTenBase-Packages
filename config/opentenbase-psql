@@ -1,0 +1,10 @@
+#!/bin/bash
+# opentenbase-psql — convenience wrapper for psql
+# Connects to the local OpenTenBase coordinator by default
+
+exec /usr/lib/opentenbase/5.0/bin/psql \
+    -h "${OTB_HOST:-127.0.0.1}" \
+    -p "${OTB_PORT:-5432}" \
+    -U "${OTB_USER:-opentenbase}" \
+    -d "${OTDB:-postgres}" \
+    "$@"

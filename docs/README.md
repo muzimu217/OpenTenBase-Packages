@@ -104,6 +104,36 @@ opentenbase-psql -h 127.0.0.1 -p 5432 -U opentenbase -d template1
 opentenbase-ctl stop
 ```
 
+### Docker Compose Deployment
+
+Deploy a complete OpenTenBase cluster (GTM + Coordinator + 2 Datanodes) with Docker Compose:
+
+```bash
+# Download the deployment script
+curl -sLO https://raw.githubusercontent.com/muzimu217/OpenTenBase-deb/main/docker/test-docker.sh
+bash test-docker.sh
+
+# Start the cluster
+cd /tmp/otb-docker/compose
+docker compose up -d --build
+
+# Connect to the database
+docker compose exec coordinator psql -h 127.0.0.1 -U opentenbase -d postgres
+
+# Stop the cluster
+docker compose down -v
+```
+
+> **Note for users in China**: Docker Hub is not directly accessible from mainland China. You need to configure a Docker registry mirror. Edit `/etc/docker/daemon.json`:
+>
+> ```json
+> {
+>   "registry-mirrors": ["https://docker.m.daocloud.io"]
+> }
+> ```
+>
+> Then restart Docker: `sudo systemctl restart docker`
+
 ### Multi-Version Management
 
 OpenTenBase supports multiple versions installed side-by-side, similar to PostgreSQL's `postgresql-14`, `postgresql-15` model. Each version has its own isolated directory tree.
