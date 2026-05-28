@@ -13,7 +13,10 @@ RUN dnf install -y \
 
 # Install OpenTenBase from extracted files
 COPY extracted/ /
-RUN chmod -R go+rX /usr/lib/opentenbase/5.0/bin/ /usr/lib/opentenbase/5.0/lib/ \
+# rpm2cpio extraction sets /usr, /etc, /var to 750 — restore standard 755
+# so the opentenbase user can traverse them (e.g. /usr/bin/bash)
+RUN chmod 755 /usr /etc /var /bin /sbin /lib 2>/dev/null || true \
+    && chmod -R go+rX /usr/lib/opentenbase/5.0/bin/ /usr/lib/opentenbase/5.0/lib/ \
     && ldconfig
 
 # Create opentenbase user and set up directories
