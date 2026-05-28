@@ -9,6 +9,7 @@ RUN dnf install -y \
     iputils \
     net-tools \
     nmap-ncat \
+    hostname \
     && dnf clean all
 
 # Install OpenTenBase from extracted files
@@ -28,6 +29,7 @@ RUN useradd -m -s /bin/bash opentenbase \
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod 755 /entrypoint.sh
 
-USER opentenbase
+# Run as root — entrypoint.sh handles user switching via runuser
+# This is needed to fix volume permissions on first start
 WORKDIR /home/opentenbase
 ENTRYPOINT ["/entrypoint.sh"]
