@@ -44,9 +44,15 @@ query_coordinator() {
     /usr/lib/opentenbase/5.0/bin/psql -h "$COORD_HOST" -p "$COORD_PORT" -U opentenbase -d postgres -t -A -c "$1" 2>/dev/null || true
 }
 
-# Resolve hostname to IP (required for forward manager hostname verification)
+# Resolve hostname to IPv4 (required for forward manager hostname verification)
+# Prefer IPv4 — getent may return ::1 (IPv6 loopback) for local hostnames
 resolve_ip() {
-    getent hosts "$1" 2>/dev/null | awk '{print $1}' || echo "$1"
+    local result
+    result=$(getent ahostsv4 "$1" 2>/dev/null | awk '{print $1}' | head -1)
+    if [ -z "$result" ]; then
+        result=$(getent hosts "$1" 2>/dev/null | awk '{print $1}' | grep -v '^::' | head -1)
+    fi
+    echo "${result:-$1}"
 }
 
 # ============================================
