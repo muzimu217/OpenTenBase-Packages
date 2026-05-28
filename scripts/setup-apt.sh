@@ -11,6 +11,23 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
+# 日志函数
+log_info() {
+    echo -e "${GREEN}[INFO]${NC} $1"
+}
+
+log_warn() {
+    echo -e "${YELLOW}[WARN]${NC} $1"
+}
+
+log_error() {
+    echo -e "${RED}[ERROR]${NC} $1"
+}
+
+log_step() {
+    echo -e "${BLUE}[STEP]${NC} $1"
+}
+
 # 配置 - Auto-detect fastest mirror
 detect_mirror() {
     local gitee_url="https://blackEvil217.gitee.io/opentenbase-packages/apt"
@@ -31,23 +48,6 @@ REPO_URL="https://github.com/muzimu217/OpenTenBase-deb/releases/latest/download"
 GPG_KEY_URL="${APT_REPO_URL}/gpg-key.asc"
 KEYRING_PATH="/usr/share/keyrings/opentenbase-archive-keyring.gpg"
 SOURCES_LIST="/etc/apt/sources.list.d/opentenbase.list"
-
-# 日志函数
-log_info() {
-    echo -e "${GREEN}[INFO]${NC} $1"
-}
-
-log_warn() {
-    echo -e "${YELLOW}[WARN]${NC} $1"
-}
-
-log_error() {
-    echo -e "${RED}[ERROR]${NC} $1"
-}
-
-log_step() {
-    echo -e "${BLUE}[STEP]${NC} $1"
-}
 
 # 检查 root 权限
 check_root() {
