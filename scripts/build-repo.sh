@@ -114,13 +114,15 @@ build_apt_repo() {
         cp scripts/opentenbase-packages-key.asc "$apt_dir/gpg-key.asc"
     fi
 
+    # Standard APT repo layout: pool/ and dists/ both under apt_dir
+    local pool_dir="$apt_dir/pool/main"
+    mkdir -p "$pool_dir"
+
     for codename in "${DEB_CODENAMES[@]}"; do
-        local codename_dir="$apt_dir/$codename"
-        local pool_dir="$codename_dir/pool/main"
-        local dist_dir="$codename_dir/dists/$codename"
+        local dist_dir="$apt_dir/dists/$codename"
         local binary_dir="$dist_dir/main/binary-amd64"
 
-        mkdir -p "$pool_dir" "$binary_dir"
+        mkdir -p "$binary_dir"
 
         # Find and copy DEBs for this codename
         local debs
@@ -143,10 +145,8 @@ build_apt_repo() {
         # Generate Packages file
         local abs_binary_dir
         abs_binary_dir="$(cd "$binary_dir" && pwd)"
-        # Filename must be relative to repo root (where dists/ and pool/ are)
-        # binary-amd64/ is 4 levels deep: dists/<codename>/main/binary-amd64
-        # So we need ../../pool/main/... to reach repo root's pool/main/
-        local filename_prefix="../../pool/main"
+        # Filename relative to dists/<codename>/ (3 levels up to reach pool/)
+        local filename_prefix="../../../pool/main"
         if ! dpkg-scanpackages "$pool_dir" /dev/null 2>/dev/null | \
             sed "s|^Filename: $pool_dir/|Filename: $filename_prefix/|" > "$abs_binary_dir/Packages"; then
             log_warn "dpkg-scanpackages failed for $codename, trying without override"

@@ -21,7 +21,7 @@ detect_mirror() {
     local github_url="https://muzimu217.github.io/OpenTenBase-deb/rpm"
 
     # Try Gitee first (faster in China)
-    if curl -sL --connect-timeout 3 --max-time 5 "${gitee_url}/gpg-key.asc" -o /dev/null 2>/dev/null; then
+    if curl -sLf --connect-timeout 5 --max-time 10 "${gitee_url}/gpg-key.asc" -o /dev/null 2>/dev/null; then
         REPO_BASE_URL="$gitee_url"
         log_info "Using Gitee mirror (faster in China)"
     else
@@ -83,14 +83,26 @@ detect_os() {
 add_gpg_key() {
     log_step "Adding GPG key ..."
 
-    rpm --import "$GPG_KEY_URL" 2>/dev/null || {
-        log_warn "rpm --import failed, trying alternative method"
-        curl -fsSL "$GPG_KEY_URL" -o /tmp/opentenbase-gpg-key.asc
-        rpm --import /tmp/opentenbase-gpg-key.asc
-        rm -f /tmp/opentenbase-gpg-key.asc
-    }
+    # Try multiple mirrors with robust fallback
+    local imported=false
+    local tmpkey="/tmp/opentenbase-gpg-key.asc"
+    for url in "$GPG_KEY_URL" "https://muzimu217.github.io/OpenTenBase-deb/rpm/gpg-key.asc"; do
+        # Try direct rpm --import first
+        rpm --import "$url" 2>/dev/null && imported=true && break
+        # Fallback: download then import (verify it's a real GPG key)
+        if curl -sL --connect-timeout 10 --max-time 30 "$url" -o "$tmpkey" 2>/dev/null && \
+           [ -s "$tmpkey" ] && head -1 "$tmpkey" | grep -q "BEGIN PGP"; then
+            rpm --import "$tmpkey" 2>/dev/null && imported=true && rm -f "$tmpkey" && break
+        fi
+        rm -f "$tmpkey"
+    done
 
-    log_info "GPG key imported"
+    if [ "$imported" = "true" ]; then
+        log_info "GPG key imported"
+    else
+        log_error "GPG key import failed"
+        exit 1
+    fi
 }
 
 configure_repo() {

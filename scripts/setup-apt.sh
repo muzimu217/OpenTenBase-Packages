@@ -34,13 +34,33 @@ detect_mirror() {
     local github_url="https://muzimu217.github.io/OpenTenBase-deb/apt"
 
     # Try Gitee first (faster in China)
-    if curl -sL --connect-timeout 3 --max-time 5 "${gitee_url}/gpg-key.asc" -o /dev/null 2>/dev/null; then
+    if curl -sLf --connect-timeout 5 --max-time 10 "${gitee_url}/gpg-key.asc" -o /dev/null 2>/dev/null; then
         APT_REPO_URL="$gitee_url"
         log_info "Using Gitee mirror (faster in China)"
     else
         APT_REPO_URL="$github_url"
         log_info "Using GitHub repository"
     fi
+}
+
+# Fallback: try both mirrors for a given path
+fetch_from_mirror() {
+    local path=$1
+    local url="${APT_REPO_URL}${path}"
+    local result
+    result=$(curl -sL --connect-timeout 10 --max-time 30 "$url" 2>/dev/null)
+    if [ -n "$result" ] && ! echo "$result" | grep -q "404"; then
+        echo "$result"
+        return 0
+    fi
+    # Fallback to GitHub
+    local github_url="https://muzimu217.github.io/OpenTenBase-deb/apt${path}"
+    result=$(curl -sL --connect-timeout 10 --max-time 30 "$github_url" 2>/dev/null)
+    if [ -n "$result" ] && ! echo "$result" | grep -q "404"; then
+        echo "$result"
+        return 0
+    fi
+    return 1
 }
 
 detect_mirror
@@ -156,13 +176,26 @@ add_gpg_key() {
     # 创建 keyrings 目录
     mkdir -p /usr/share/keyrings
 
-    # 下载并添加 GPG 密钥
-    if curl -fsSL "$GPG_KEY_URL" | gpg --dearmor -o "$KEYRING_PATH" 2>/dev/null; then
-        chmod 644 "$KEYRING_PATH"
-        log_info "GPG 密钥已添加到: $KEYRING_PATH"
-    else
+    # 尝试从多个镜像下载
+    local success=false
+    local tmpkey="/tmp/opentenbase-gpg-key.asc"
+    for url in "$GPG_KEY_URL" "https://muzimu217.github.io/OpenTenBase-deb/apt/gpg-key.asc"; do
+        if curl -sL --connect-timeout 10 --max-time 30 "$url" -o "$tmpkey" 2>/dev/null && \
+           [ -s "$tmpkey" ] && head -1 "$tmpkey" | grep -q "BEGIN PGP"; then
+            if gpg --batch --dearmor -o "$KEYRING_PATH" < "$tmpkey" 2>/dev/null; then
+                chmod 644 "$KEYRING_PATH"
+                log_info "GPG 密钥已添加到: $KEYRING_PATH"
+                success=true
+                rm -f "$tmpkey"
+                break
+            fi
+        fi
+        rm -f "$tmpkey"
+    done
+
+    if [ "$success" != "true" ]; then
         log_error "GPG 密钥下载失败"
-        echo "请检查网络连接或手动下载: $GPG_KEY_URL"
+        echo "请检查网络连接"
         exit 1
     fi
 }
