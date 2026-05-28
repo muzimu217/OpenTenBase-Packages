@@ -25,6 +25,7 @@
 | **一键安装** | `curl -sSL ... \| sudo bash` 自动检测系统、下载对应包、解决依赖 |
 | **CI/CD 自动化** | GitHub Actions 自动构建、签名、发布 |
 | **GPG 签名** | 所有发布包均经 GPG 签名（RSA 4096 位），确保包的完整性和来源可信 |
+| **APT/RPM 仓库** | 官方仓库托管在 GitHub Pages — `apt install opentenbase` / `dnf install opentenbase` |
 | **systemd 集成** | 原生 systemd 服务单元，支持 `systemctl` 管理 |
 | **集群管理** | 内置 `opentenbase-ctl` 管理脚本，一键初始化、启动、停止集群 |
 
@@ -32,37 +33,18 @@
 
 ## 快速安装
 
-### 一键安装（推荐）
+### APT 仓库（Ubuntu / Debian）— 推荐
 
 ```bash
-curl -sLO https://github.com/muzimu217/OpenTenBase-packages/releases/latest/download/install.sh
-sudo bash install.sh
-```
-
-安装脚本自动完成：
-- 检测操作系统及版本
-- 配置软件包仓库（APT / YUM）
-- 下载并安装对应格式的软件包
-- 解决依赖关系
-
-### APT 手动安装（Debian / Ubuntu）
-
-```bash
-# 添加仓库
-curl -sSL https://github.com/muzimu217/OpenTenBase-packages/releases/latest/download/setup-apt.sh | sudo bash
-
-# 安装
+curl -sSL https://raw.githubusercontent.com/muzimu217/OpenTenBase-deb/main/scripts/setup-apt.sh | sudo bash
 sudo apt update
 sudo apt install opentenbase
 ```
 
-### YUM/DNF 手动安装（RHEL / CentOS / Fedora）
+### YUM/DNF 仓库（RHEL / CentOS / Fedora）
 
 ```bash
-# 添加仓库
-curl -sSL https://github.com/muzimu217/OpenTenBase-packages/releases/latest/download/setup-rpm.sh | sudo bash
-
-# 安装
+curl -sSL https://raw.githubusercontent.com/muzimu217/OpenTenBase-deb/main/scripts/setup-rpm.sh | sudo bash
 sudo dnf install opentenbase
 ```
 
@@ -286,12 +268,12 @@ OpenTenBase-packages/
 - [x] 多版本共存（版本化路径 + 符号链接切换）
 - [x] 自动发布流水线（tag 触发构建 + 测试 + 发布）
 
-### 阶段二：官方 APT 仓库（1-2 月）-- 进行中
+### 阶段二：官方 APT 仓库（1-2 月）-- 已完成
 
 - [x] 多版本管理（`opentenbase-switch-version`）
 - [x] 一键安装脚本
 - [x] GPG 签名集成（RSA 4096 位，CI 自动化）
-- [ ] APT/RPM 仓库托管（需要域名和服务器）
+- [x] APT/RPM 仓库托管（GitHub Pages，免费）
 
 ### 阶段三：跨平台生态（3-6 月）
 

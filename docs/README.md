@@ -22,7 +22,8 @@ English | [中文](README_zh.md)
 | **Multi-distro** | 14 distros: Ubuntu/Debian (7), Rocky/Alma/CentOS/Fedora/openEuler (7) |
 | **Multi-arch** | x86_64 (amd64) + ARM64 (aarch64) |
 | **Multi-version coexistence** | Install v5.0 / v2.6 / v2.5 and dev versions side-by-side, switch with `opentenbase-ctl switch` |
-| **One-line install** | `curl -sSL ... \| sudo bash` — auto-detects OS, downloads correct packages, resolves dependencies |
+| **APT/RPM repository** | Official repository hosted on GitHub Pages — `apt install opentenbase` / `dnf install opentenbase` |
+| **One-line install** | `curl -sSL ... \| sudo bash` — auto-configures repository, detects OS, resolves dependencies |
 | **CI/CD automation** | GitHub Actions for automated build, sign, and publish |
 | **GPG signed packages** | All release packages are GPG-signed (RSA 4096-bit) for authenticity verification |
 | **systemd integration** | Native systemd service units, managed via `systemctl` |
@@ -32,17 +33,20 @@ English | [中文](README_zh.md)
 
 ## Quick Install
 
-### One-line Install (Recommended)
+### APT Repository (Ubuntu / Debian) — Recommended
 
 ```bash
-curl -sLO https://raw.githubusercontent.com/muzimu217/OpenTenBase-deb/main/scripts/install.sh
-sudo bash install.sh
+curl -sSL https://raw.githubusercontent.com/muzimu217/OpenTenBase-deb/main/scripts/setup-apt.sh | sudo bash
+sudo apt update
+sudo apt install opentenbase
 ```
 
-The installer automatically:
-- Detects operating system and version
-- Downloads and installs the correct package format (DEB/RPM)
-- Resolves all dependencies
+### YUM/DNF Repository (RHEL / CentOS / Fedora)
+
+```bash
+curl -sSL https://raw.githubusercontent.com/muzimu217/OpenTenBase-deb/main/scripts/setup-rpm.sh | sudo bash
+sudo dnf install opentenbase
+```
 
 ### Manual Install
 
@@ -268,12 +272,12 @@ See [GitHub Releases](https://github.com/muzimu217/OpenTenBase-deb/releases) for
 - [x] Multi-version coexistence (versioned paths + symlink switching)
 - [x] Automated release pipeline (tag triggers build + test + publish)
 
-### Phase 2: Official APT Repository (1-2 months) -- In Progress
+### Phase 2: Official APT Repository (1-2 months) -- Completed
 
 - [x] Multi-version management (`opentenbase-switch-version`)
 - [x] One-click installation script
 - [x] GPG signing integration (RSA 4096-bit, CI automated)
-- [ ] APT/RPM repository hosting (requires domain + server)
+- [x] APT/RPM repository hosting (GitHub Pages, free)
 
 ### Phase 3: Cross-Platform Ecosystem (3-6 months)
 
