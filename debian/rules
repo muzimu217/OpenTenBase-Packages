@@ -4,8 +4,9 @@ PREFIX  := /usr/lib/opentenbase/$(OTB_VERSION)
 DESTDIR := $(CURDIR)/debian/tmp
 JOBS    := $(shell nproc)
 
-# Suppress all warnings and force C17 (C23 breaks OpenTenBase: bool keyword, empty param lists)
+# Suppress all warnings and force C17/C++17 (C23 breaks OpenTenBase: bool keyword, empty param lists)
 export DEB_CFLAGS_MAINT_APPEND := -w -std=gnu17
+export DEB_CXXFLAGS_MAINT_APPEND := -w -std=gnu++17
 export DEB_LDFLAGS_MAINT_APPEND := -Wl,--allow-multiple-definition -Wl,-rpath,/usr/lib/opentenbase/$(OTB_VERSION)/lib
 
 # Force system libraries (avoid conda paths)
@@ -33,9 +34,11 @@ override_dh_auto_configure:
 	    sed -i '/enable_gtm_resqueue_debug/,/},/{s/true, false, NULL/true, NULL, NULL, false, NULL/; s/false, false, NULL/false, NULL, NULL, false, NULL/}' src/gtm/main/gtm_opt.c; \
 	fi
 	# Fix CLI11 missing cstdint (uint64_t not found in newer GCC/libstdc++)
-	if [ -f contrib/opentenbase_tool/src/CLI/Validators.hpp ]; then \
-	    sed -i '20a #include <cstdint>' contrib/opentenbase_tool/src/CLI/Validators.hpp; \
-	fi
+	for f in src/CLI/Validators.hpp contrib/opentenbase_tool/src/CLI/Validators.hpp; do \
+	    if [ -f "$$f" ]; then \
+	        grep -q '#include <cstdint>' "$$f" || sed -i '20a #include <cstdint>' "$$f"; \
+	    fi; \
+	done
 	# Fix hardcoded static library paths in configure
 	sed -i 's|/usr/local/lib/liblz4.a|-llz4|g' configure
 	sed -i 's|/usr/local/lib/libzstd.a|-lzstd|g' configure
