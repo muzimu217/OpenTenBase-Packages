@@ -16,6 +16,9 @@ export PKG_CONFIG_PATH := /usr/lib/$(shell dpkg-architecture -qDEB_HOST_MULTIARC
 	dh $@
 
 override_dh_auto_configure:
+	# Disable Ubuntu hardening flags that break configure's thread safety test
+	# -Wl,-Bsymbolic-functions causes false negative in thread_test
+	export DEB_BUILD_MAINT_OPTIONS="hardening=-all"
 	# GCC compatibility patches for modern GCC (12+)
 	# Fix bool type conflict: modern GCC uses _Bool, not char
 	if grep -q 'typedef char bool;' src/include/c.h 2>/dev/null; then \
