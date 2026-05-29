@@ -17,8 +17,14 @@ export PKG_CONFIG_PATH := /usr/lib/$(shell dpkg-architecture -qDEB_HOST_MULTIARC
 
 override_dh_auto_configure:
 	# GCC 15+ defaults: implicit function declarations are errors, breaking configure thread test.
-	# Force thread safety check to pass — all modern glibc are thread-safe.
-	perl -0777 -pi -e 's/#include "\$$srcdir\/src\/test\/thread\/thread_test\.c"\n_ACEOF\nif ac_fn_c_try_run "\$$LINENO"; then :/if true; then :/' configure
+	# Patch the test to add GCC 15 compat pragmas
+	if [ -f src/test/thread/thread_test.c ]; then \
+	    sed -i '1i\
+	#pragma GCC diagnostic ignored "-Wimplicit-function-declaration"\
+	#pragma GCC diagnostic ignored "-Wimplicit-int"\
+	#pragma GCC diagnostic ignored "-Wint-conversion"\
+	#pragma GCC diagnostic ignored "-Wincompatible-pointer-types"' src/test/thread/thread_test.c; \
+	fi
 	# GCC compatibility patches for modern GCC (12+)
 	# Fix bool type conflict: modern GCC uses _Bool, not char
 	if grep -q 'typedef char bool;' src/include/c.h 2>/dev/null; then \
