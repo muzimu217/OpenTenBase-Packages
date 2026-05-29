@@ -48,13 +48,13 @@ jobs:
         env:
           GPG_KEY_ID: "9D8FA46F3A55D5F0"
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          INPUT_TAG: ${{ github.event.inputs.tag }}
         run: |
           chmod +x scripts/build-repo.sh
-          TAG="${{ github.event.inputs.tag }}"
-          if [ -z "$TAG" ]; then
+          if [ -z "$INPUT_TAG" ]; then
             ./scripts/build-repo.sh -o repo
           else
-            ./scripts/build-repo.sh -t "$TAG" -o repo
+            ./scripts/build-repo.sh -t "$INPUT_TAG" -o repo
           fi
 
       - name: Upload Pages artifact
