@@ -47,7 +47,7 @@ jobs:
               else
                 MATRIX="$MATRIX,"
               fi
-              MATRIX="$MATRIX{\"version\":\"$ver\",\"name\":\"${distro}-${ver}-amd64\",\"container\":\"$container\",\"codename\":\"$codename\"}"
+              MATRIX="$MATRIX{\"version\":\"$ver\",\"name\":\"${distro}-${ver}-amd64\",\"container\":\"${container}:${codename_name}\",\"codename\":\"$codename\"}"
             done
           done
           MATRIX="$MATRIX]}"
