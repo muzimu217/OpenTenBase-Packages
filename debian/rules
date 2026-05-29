@@ -151,6 +151,15 @@ override_dh_install:
 	    dh_install; \
 	fi
 
+override_dh_installdocs:
+	# v2.5.0 may not have CONTRIBUTORS.md; install what exists
+	dh_installdocs --no-act 2>/dev/null || true
+	for f in README.md LICENSE.txt HISTORY CONTRIBUTORS.md; do \
+	    [ -f "$$f" ] && echo "$$f"; \
+	done > debian/opentenbase-doc.docs.tmp
+	mv debian/opentenbase-doc.docs.tmp debian/opentenbase-doc.docs
+	dh_installdocs
+
 override_dh_missing:
 	dh_missing --list-missing
 
