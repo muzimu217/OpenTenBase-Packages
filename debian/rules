@@ -4,8 +4,8 @@ PREFIX  := /usr/lib/opentenbase/$(OTB_VERSION)
 DESTDIR := $(CURDIR)/debian/tmp
 JOBS    := $(shell nproc)
 
-# Suppress all warnings (OpenTenBase code is not warning-clean on modern GCC)
-export DEB_CFLAGS_MAINT_APPEND := -w
+# Suppress all warnings and force C17 (C23 breaks OpenTenBase: bool keyword, empty param lists)
+export DEB_CFLAGS_MAINT_APPEND := -w -std=gnu17
 export DEB_LDFLAGS_MAINT_APPEND := -Wl,--allow-multiple-definition -Wl,-rpath,/usr/lib/opentenbase/$(OTB_VERSION)/lib
 
 # Force system libraries (avoid conda paths)
@@ -59,7 +59,7 @@ override_dh_auto_configure:
 	    --enable-license=no \
 	    --enable-thread-safety \
 	    XML2_CONFIG=/usr/bin/xml2-config \
-	    CFLAGS="-O2 -g -fPIC -w -Wno-error=incompatible-pointer-types -Wno-error=int-conversion -Wno-error=implicit-function-declaration -Wno-error=implicit-int -DNOLIC -I/usr/include/libxml2 $(if $(filter amd64,$(shell dpkg-architecture -qDEB_HOST_ARCH 2>/dev/null)),-mcx16)" \
+	    CFLAGS="-O2 -g -fPIC -w -std=gnu17 -Wno-error=incompatible-pointer-types -Wno-error=int-conversion -Wno-error=implicit-function-declaration -Wno-error=implicit-int -DNOLIC -I/usr/include/libxml2 $(if $(filter amd64,$(shell dpkg-architecture -qDEB_HOST_ARCH 2>/dev/null)),-mcx16)" \
 	    LDFLAGS="-L/usr/lib/$(shell dpkg-architecture -qDEB_HOST_MULTIARCH 2>/dev/null || echo x86_64-linux-gnu) -Wl,--allow-multiple-definition -Wl,-rpath,/usr/lib/opentenbase/$(OTB_VERSION)/lib -Wl,--no-as-needed -latomic" \
 	    LIBS="-lpthread -lzstd -llz4 -Wl,--no-as-needed -latomic"
 	# Patch LIBS and strip --as-needed
