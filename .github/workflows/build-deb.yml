@@ -145,7 +145,7 @@ jobs:
           fi
           # Replace hardcoded 5.0 in all debian/ files for non-5.0 builds
           if [ "$OTB_VERSION" != "5.0" ]; then
-            find debian/ -type f \( -name '*.install' -o -name '*.dirs' -o -name '*.postinst' -o -name '*.prerm' -o -name '*.postrm' \) \
+            find debian/ -type f \( -name '*.install' -o -name '*.dirs' -o -name '*.postinst' -o -name '*.prerm' -o -name '*.postrm' -o -name 'changelog' -o -name 'control' \) \
               -exec sed -i "s/5\.0/$OTB_VERSION/g" {} +
           fi
           set -o pipefail
