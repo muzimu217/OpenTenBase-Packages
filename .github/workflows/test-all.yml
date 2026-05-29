@@ -209,12 +209,22 @@ jobs:
       - name: Install packages
         run: |
           if ls /tmp/rpms/*.rpm 1>/dev/null 2>&1; then
-            rpm -ivh /tmp/rpms/*.rpm --nodeps 2>/dev/null || true
+            rpm -ivh /tmp/rpms/*.rpm --nodeps --force 2>&1 || true
             ldconfig || true
           else
             echo "ERROR: No .rpm packages found"
             exit 1
           fi
+
+      - name: Verify installation
+        run: |
+          echo "=== Installed packages ==="
+          rpm -qa | grep opentenbase || true
+          echo "=== Binary check ==="
+          ls -la /usr/lib/opentenbase/5.0/bin/initgtm 2>&1 || echo "initgtm NOT FOUND"
+          ls -la /usr/lib/opentenbase/5.0/bin/postgres 2>&1 || echo "postgres NOT FOUND"
+          file /usr/lib/opentenbase/5.0/bin/initgtm 2>&1 || true
+          ldd /usr/lib/opentenbase/5.0/bin/initgtm 2>&1 || true
 
       - name: Checkout test scripts
         uses: actions/checkout@v4
