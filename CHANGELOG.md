@@ -6,6 +6,23 @@ Format based on [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [v5.0-p6] — 2026-05-30
+
+Cloudflare CDN acceleration for global package delivery.
+
+### Added
+- Cloudflare CDN mirror: `apt.blackevil217.com` / `rpm.blackevil217.com`
+- DNS CNAME records with Cloudflare Proxy enabled
+- CNAME file generation in `build-repo.sh` for GitHub Pages custom domain
+- CDN mirror detection in `setup-apt.sh` and `setup-rpm.sh`
+
+### Mirror Priority
+1. Cloudflare CDN (apt.blackevil217.com) — global acceleration, free forever
+2. Gitee (blackEvil217.gitee.io) — China users
+3. GitHub Pages (muzimu217.github.io) — direct fallback
+
+---
+
 ## [v5.0-p5] — 2026-05-30
 
 Critical bug fix for cluster initialization.
