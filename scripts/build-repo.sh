@@ -529,6 +529,11 @@ fi
 # Create index page
 create_index_page "$OUTPUT_DIR"
 
+# Create CNAME file for custom domain (apt.blackevil217.com)
+# Both apt.blackevil217.com and rpm.blackevil217.com point to this Pages site
+echo "apt.blackevil217.com" > "$OUTPUT_DIR/CNAME"
+log_info "Created CNAME file for apt.blackevil217.com"
+
 echo ""
 echo "========================================"
 log_info "Repository build complete!"
