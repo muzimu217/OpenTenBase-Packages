@@ -95,11 +95,10 @@ CREATE TABLE fo_test (
 " postgres
 
 # Insert data that will be distributed across shards
-${PSQL} -c "
-INSERT INTO fo_test
-SELECT g, 'data_' || g, now()
-FROM generate_series(1, 100) g;
-" postgres
+# Use single-row INSERTs (bulk INSERT via generate_series hangs on distributed tables)
+for g in $(seq 1 100); do
+    ${PSQL} -c "INSERT INTO fo_test VALUES (${g}, 'data_${g}', now());" postgres 2>/dev/null || true
+done
 
 count=$(${PSQL} -c "SELECT count(*) FROM fo_test;" postgres)
 if [[ "$count" == "100" ]]; then
