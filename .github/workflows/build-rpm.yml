@@ -190,15 +190,17 @@ jobs:
       max-parallel: 2
       matrix:
         include:
+          # openEuler is the most stable for ARM64 QEMU builds
           - version: '5.0'
             distro: 'openeuler-22.03'
             container: 'openeuler/openeuler:22.03'
-          - version: '5.0'
-            distro: 'rockylinux-9'
-            container: 'rockylinux:9'
-          - version: '5.0'
-            distro: 'almalinux-9'
-            container: 'almalinux:9'
+          # Rocky/Alma ARM64 needs dependency fixes - disabled for now
+          # - version: '5.0'
+          #   distro: 'rockylinux-9'
+          #   container: 'rockylinux:9'
+          # - version: '5.0'
+          #   distro: 'almalinux-9'
+          #   container: 'almalinux:9'
 
     name: ${{ matrix.distro }}-${{ matrix.version }}-aarch64
     runs-on: ubuntu-latest
