@@ -47,11 +47,23 @@ wait_for_port() {
     done
 }
 
+# Wait for a port to become free (not listening)
+wait_for_port_free() {
+    local port="$1" timeout="$2" elapsed=0
+    while check_port "${port}"; do
+        [ "${elapsed}" -ge "${timeout}" ] && return 1
+        sleep 1; elapsed=$((elapsed + 1))
+    done
+}
+
 stop_services() {
     pkill -f "gtm -D ${GTM_DATA}" 2>/dev/null || true
     pkill -f "postgres.*datanode.*${DN_DATA}" 2>/dev/null || true
     pkill -f "postgres.*coordinator.*${COORD_DATA}" 2>/dev/null || true
-    sleep 1
+    # Also kill any leftover postgres/gtm processes from previous test runs
+    pkill -f "postgres.*-D" 2>/dev/null || true
+    pkill -f "gtm.*-D" 2>/dev/null || true
+    sleep 2
 }
 
 # Root check
@@ -71,8 +83,25 @@ log "Service user: ${SVC_USER}"
 as_svc() { su -s /bin/bash -c "$1" "${SVC_USER}"; }
 append_conf() { local f="$1"; shift; printf '%s\n' "$@" >> "${f}"; }
 
-# Kill any existing processes
+# Kill any existing processes (including from previous test runs)
 stop_services
+
+# Ensure our ports are free before starting
+for port in ${GTM_PORT} ${DN_PORT} ${COORD_PORT}; do
+    if check_port "${port}"; then
+        log "Port ${port} still in use, waiting for it to be free..."
+        if ! wait_for_port_free "${port}" 10; then
+            log "Force killing processes on port ${port}..."
+            if command -v fuser >/dev/null 2>&1; then
+                fuser -k "${port}/tcp" 2>/dev/null || true
+            fi
+            if command -v ss >/dev/null 2>&1; then
+                ss -tlnp | grep ":${port} " | grep -oP 'pid=\K[0-9]+' | xargs -r kill -9 2>/dev/null || true
+            fi
+            sleep 2
+        fi
+    fi
+done
 
 # Prepare directories
 rm -rf "${TEST_BASE}"
