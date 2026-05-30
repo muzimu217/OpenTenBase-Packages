@@ -44,7 +44,7 @@ log_info "Test 1: Connection pool port check"
 pool_alive=0
 for i in 1 2 3; do
     if ${PSQL} -c "SELECT 1;" postgres >/dev/null 2>&1; then
-        ((pool_alive++))
+        pool_alive=$((pool_alive + 1))
     fi
 done
 if [[ "$pool_alive" == "3" ]]; then
@@ -67,7 +67,7 @@ for i in $(seq 1 5); do
 done
 for pid in "${concurrent_pids[@]}"; do
     if wait "$pid" 2>/dev/null; then
-        ((concurrent_ok++))
+        concurrent_ok=$((concurrent_ok + 1))
     fi
 done
 if [[ "$concurrent_ok" == "5" ]]; then
