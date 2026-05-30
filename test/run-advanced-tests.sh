@@ -212,7 +212,7 @@ for test_script in "${SCRIPT_DIR}"/advanced/test_*.sh; do
     test_name=$(basename "$test_script" .sh)
     log "Running ${test_name}..."
     # Run each test script as the service user so psql connects with the correct database role
-    if as_svc "PATH=/usr/lib/opentenbase/5.0/bin:\$PATH timeout 300 bash ${test_script}"; then
+    if timeout --kill-after=10 300 su -s /bin/bash -c "PATH=/usr/lib/opentenbase/5.0/bin:\$PATH bash ${test_script}" "${SVC_USER}"; then
         log "${test_name}: PASSED"
         TOTAL_PASS=$((TOTAL_PASS + 1))
     else
