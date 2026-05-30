@@ -140,7 +140,7 @@ as_svc "${DN_PSQL} -c \"CREATE NODE coord WITH (TYPE='coordinator', HOST='127.0.
 as_svc "${DN_PSQL} -c \"SELECT pgxc_pool_reload();\"" 2>/dev/null || true
 log "Nodes registered"
 
-# Run advanced tests
+# Run advanced tests as SVC_USER so psql connects with the correct role
 export PATH="/usr/lib/opentenbase/5.0/bin:$PATH"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 TOTAL_PASS=0
@@ -150,7 +150,8 @@ for test_script in "${SCRIPT_DIR}"/advanced/test_*.sh; do
     [ -f "$test_script" ] || continue
     test_name=$(basename "$test_script" .sh)
     log "Running ${test_name}..."
-    if bash "$test_script"; then
+    # Run each test script as the service user so psql connects with the correct database role
+    if as_svc "PATH=/usr/lib/opentenbase/5.0/bin:\$PATH bash ${test_script}"; then
         log "${test_name}: PASSED"
         TOTAL_PASS=$((TOTAL_PASS + 1))
     else
