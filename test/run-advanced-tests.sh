@@ -3,9 +3,7 @@
 # OpenTenBase Advanced Test Runner
 # =============================================================================
 # Starts a cluster, runs all advanced test suites, then tears down.
-# Designed to run after multi-node-test.sh in CI.
-#
-# Usage: bash test/run-advanced-tests.sh
+# Uses direct process start (not gtm_ctl/pg_ctl) to avoid zombie detection.
 # =============================================================================
 set -e
 
@@ -14,7 +12,6 @@ TEST_BASE="/tmp/otb-adv-test"
 GTM_DATA="${TEST_BASE}/gtm"
 COORD_DATA="${TEST_BASE}/coord"
 DN_DATA="${TEST_BASE}/dn1"
-LOG_DIR="${TEST_BASE}/logs"
 GTM_PORT=6666
 COORD_PORT=5432
 DN_PORT=15432
@@ -38,13 +35,11 @@ wait_for_port() {
     done
 }
 
-as_svc() { su -s /bin/bash -c "$1" "${SVC_USER}"; }
-append_conf() { local f="$1"; shift; printf '%s\n' "$@" >> "${f}"; }
-
 stop_services() {
-    [ -d "${COORD_DATA}" ] && "${BIN_DIR}/pg_ctl" stop -D "${COORD_DATA}" -Z coordinator -m fast 2>/dev/null || true
-    [ -d "${DN_DATA}" ] && "${BIN_DIR}/pg_ctl" stop -D "${DN_DATA}" -Z datanode -m fast 2>/dev/null || true
-    [ -d "${GTM_DATA}" ] && "${BIN_DIR}/gtm_ctl" stop -D "${GTM_DATA}" -Z gtm -m fast 2>/dev/null || true
+    pkill -f "gtm -D ${GTM_DATA}" 2>/dev/null || true
+    pkill -f "postgres.*datanode.*${DN_DATA}" 2>/dev/null || true
+    pkill -f "postgres.*coordinator.*${COORD_DATA}" 2>/dev/null || true
+    sleep 1
 }
 
 # Root check
@@ -61,58 +56,89 @@ else
 fi
 log "Service user: ${SVC_USER}"
 
+as_svc() { su -s /bin/bash -c "$1" "${SVC_USER}"; }
+append_conf() { local f="$1"; shift; printf '%s\n' "$@" >> "${f}"; }
+
+# Kill any existing processes
+stop_services
+
 # Prepare directories
 rm -rf "${TEST_BASE}"
-mkdir -p "${GTM_DATA}" "${COORD_DATA}" "${DN_DATA}" "${LOG_DIR}"
-chown "${SVC_USER}:${SVC_USER}" "${TEST_BASE}" "${GTM_DATA}" "${COORD_DATA}" "${DN_DATA}" "${LOG_DIR}"
+mkdir -p "${GTM_DATA}" "${COORD_DATA}" "${DN_DATA}"
+chown "${SVC_USER}:${SVC_USER}" "${TEST_BASE}" "${GTM_DATA}" "${COORD_DATA}" "${DN_DATA}"
 
-# Start GTM
+# Initialize and start GTM (direct start, not gtm_ctl)
 log "Starting GTM..."
 as_svc "${BIN_DIR}/initgtm -D ${GTM_DATA} -Z gtm" || fail "initgtm failed"
-as_svc "${BIN_DIR}/gtm_ctl start -D ${GTM_DATA} -Z gtm -l ${LOG_DIR}/gtm.log" || fail "GTM start failed"
-wait_for_port "${GTM_PORT}" "${STARTUP_TIMEOUT}" || fail "GTM not listening"
-log "GTM up on port ${GTM_PORT}"
+cat > "${GTM_DATA}/gtm.conf" <<EOF
+listen_addresses = '*'
+port = ${GTM_PORT}
+nodename = 'one'
+EOF
+chown "${SVC_USER}:${SVC_USER}" "${GTM_DATA}/gtm.conf"
+as_svc "${BIN_DIR}/gtm -D ${GTM_DATA}" > /tmp/adv-gtm.log 2>&1 &
+GTM_PID=$!
+sleep 3
+if kill -0 $GTM_PID 2>/dev/null; then
+    log "GTM up on port ${GTM_PORT} (PID $GTM_PID)"
+else
+    fail "GTM failed to start"
+fi
 
-# Start Datanode
+# Initialize and start Datanode
 log "Starting Datanode..."
-as_svc "${BIN_DIR}/initdb -D ${DN_DATA} --nodename=dn1" || fail "Datanode initdb failed"
+as_svc "${BIN_DIR}/initdb -D ${DN_DATA} --nodename=dn1 --nodetype=datanode --master_gtm_nodename=one --master_gtm_ip=127.0.0.1 --master_gtm_port=${GTM_PORT}" || fail "Datanode initdb failed"
 append_conf "${DN_DATA}/postgresql.conf" \
-    "gtm_host = '127.0.0.1'" "gtm_port = ${GTM_PORT}" \
-    "gtm_backup_host = ''" "gtm_backup_port = 0" \
-    "pooler_port = 6661" "max_pool_size = 100" \
-    "listen_addresses = '*'" "port = ${DN_PORT}"
+    "port = ${DN_PORT}" "pooler_port = 6661" "forward_port = 6670" \
+    "listen_addresses = '*'"
 cat > "${DN_DATA}/pg_hba.conf" <<HBA
 local   all             all                                     trust
 host    all             all             127.0.0.1/32            trust
 host    all             all             ::1/128                 trust
 HBA
 chown "${SVC_USER}:${SVC_USER}" "${DN_DATA}/postgresql.conf" "${DN_DATA}/pg_hba.conf"
-as_svc "${BIN_DIR}/pg_ctl start -D ${DN_DATA} -Z datanode -l ${LOG_DIR}/dn1.log" || fail "Datanode start failed"
-wait_for_port "${DN_PORT}" "${STARTUP_TIMEOUT}" || fail "Datanode not listening"
-log "Datanode up on port ${DN_PORT}"
+as_svc "${BIN_DIR}/postgres --datanode -D ${DN_DATA}" > /tmp/adv-dn.log 2>&1 &
+DN_PID=$!
+sleep 3
+if kill -0 $DN_PID 2>/dev/null; then
+    log "Datanode up on port ${DN_PORT} (PID $DN_PID)"
+else
+    fail "Datanode failed to start"
+fi
 
-# Start Coordinator
+# Initialize and start Coordinator
 log "Starting Coordinator..."
-as_svc "${BIN_DIR}/initdb -D ${COORD_DATA} --nodename=coord" || fail "Coordinator initdb failed"
+as_svc "${BIN_DIR}/initdb -D ${COORD_DATA} --nodename=coord --nodetype=coordinator --master_gtm_nodename=one --master_gtm_ip=127.0.0.1 --master_gtm_port=${GTM_PORT}" || fail "Coordinator initdb failed"
 append_conf "${COORD_DATA}/postgresql.conf" \
-    "gtm_host = '127.0.0.1'" "gtm_port = ${GTM_PORT}" \
-    "gtm_backup_host = ''" "gtm_backup_port = 0" \
-    "pooler_port = 6662" "max_pool_size = 100" \
-    "listen_addresses = '*'" "port = ${COORD_PORT}"
+    "port = ${COORD_PORT}" "pooler_port = 6662" "forward_port = 6669" \
+    "listen_addresses = '*'"
 cat > "${COORD_DATA}/pg_hba.conf" <<HBA
 local   all             all                                     trust
 host    all             all             127.0.0.1/32            trust
 host    all             all             ::1/128                 trust
 HBA
 chown "${SVC_USER}:${SVC_USER}" "${COORD_DATA}/postgresql.conf" "${COORD_DATA}/pg_hba.conf"
-as_svc "${BIN_DIR}/pg_ctl start -D ${COORD_DATA} -Z coordinator -l ${LOG_DIR}/coord.log" || fail "Coordinator start failed"
-wait_for_port "${COORD_PORT}" "${STARTUP_TIMEOUT}" || fail "Coordinator not listening"
-log "Coordinator up on port ${COORD_PORT}"
+as_svc "${BIN_DIR}/postgres --coordinator -D ${COORD_DATA}" > /tmp/adv-coord.log 2>&1 &
+COORD_PID=$!
+sleep 3
+if kill -0 $COORD_PID 2>/dev/null; then
+    log "Coordinator up on port ${COORD_PORT} (PID $COORD_PID)"
+else
+    fail "Coordinator failed to start"
+fi
 
-# Register datanode
-log "Registering datanode..."
-as_svc "${BIN_DIR}/psql -h 127.0.0.1 -p ${COORD_PORT} -c \"CREATE NODE dn1 WITH (TYPE = 'datanode', HOST = '127.0.0.1', PORT = ${DN_PORT});\"" 2>&1 || true
-as_svc "${BIN_DIR}/psql -h 127.0.0.1 -p ${COORD_PORT} -c \"SELECT pgxc_pool_reload();\"" 2>&1 || true
+# Register nodes
+log "Registering nodes..."
+COORD_PSQL="${BIN_DIR}/psql -h 127.0.0.1 -p ${COORD_PORT} -U ${SVC_USER} -d postgres -X -q"
+DN_PSQL="${BIN_DIR}/psql -h 127.0.0.1 -p ${DN_PORT} -U ${SVC_USER} -d postgres -X -q"
+
+as_svc "${COORD_PSQL} -c \"CREATE GTM NODE gtm_master WITH (HOST='127.0.0.1', PORT=${GTM_PORT}, PRIMARY);\"" 2>/dev/null || true
+as_svc "${COORD_PSQL} -c \"CREATE NODE dn1 WITH (TYPE='datanode', HOST='127.0.0.1', PORT=${DN_PORT}, FORWARD=6670, PRIMARY, PREFERRED);\"" 2>/dev/null || true
+as_svc "${COORD_PSQL} -c \"SELECT pgxc_pool_reload();\"" 2>/dev/null || true
+as_svc "${DN_PSQL} -c \"CREATE GTM NODE gtm_master WITH (HOST='127.0.0.1', PORT=${GTM_PORT}, PRIMARY);\"" 2>/dev/null || true
+as_svc "${DN_PSQL} -c \"CREATE NODE coord WITH (TYPE='coordinator', HOST='127.0.0.1', PORT=${COORD_PORT}, FORWARD=6669);\"" 2>/dev/null || true
+as_svc "${DN_PSQL} -c \"SELECT pgxc_pool_reload();\"" 2>/dev/null || true
+log "Nodes registered"
 
 # Run advanced tests
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -135,7 +161,6 @@ done
 # Cleanup
 log "Stopping cluster..."
 stop_services
-sleep 1
 rm -rf "${TEST_BASE}"
 [ "${SVC_USER}" = "otbtest" ] && userdel otbtest 2>/dev/null || true
 
