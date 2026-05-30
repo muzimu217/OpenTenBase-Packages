@@ -379,5 +379,100 @@ opentenbase-psql -h 127.0.0.1 -p 5432 -U opentenbase -d postgres -c "SELECT * FR
 
 ---
 
+
+---
+
+## 十一、高级功能 CI 验证（2026-05-30）
+
+### CI 运行信息
+
+- **Run ID：** 26683489025
+- **日期：** 2026-05-30
+- **结果：** 14/14 发行版全部通过 + 31/31 高级测试全部通过
+- **Workflow：** test-all.yml
+
+### 测试范围
+
+在原有安装/多节点/版本切换测试基础上，新增 5 个高级测试套件：
+
+| 测试套件 | 测试数 | 结果 |
+|----------|--------|------|
+| 事务测试 (test_transactions.sh) | 6 | 6/6 PASSED |
+| 连接池测试 (test_connection_pool.sh) | 6 | 6/6 PASSED |
+| 数据类型测试 (test_data_types.sh) | 7 | 7/7 PASSED |
+| 性能基准测试 (test_performance.sh) | 6 | 6/6 PASSED |
+| 故障恢复测试 (test_failover.sh) | 7 | 7/7 PASSED |
+| **合计** | **31** | **31/31 PASSED** |
+
+### DEB 发行版（7/7 通过）
+
+| 发行版 | 安装 | 多节点 | 高级测试 |
+|--------|------|--------|---------|
+| Ubuntu 20.04 (focal) | ✅ | ✅ | ✅ 31/31 |
+| Ubuntu 22.04 (jammy) | ✅ | ✅ | ✅ 31/31 |
+| Ubuntu 24.04 (noble) | ✅ | ✅ | ✅ 31/31 |
+| Ubuntu 25.04 (plucky) | ✅ | ✅ | ✅ 31/31 |
+| Debian 11 (bullseye) | ✅ | ✅ | ✅ 31/31 |
+| Debian 12 (bookworm) | ✅ | ✅ | ✅ 31/31 |
+| Debian 13 (trixie) | ✅ | ✅ | ✅ 31/31 |
+
+### RPM 发行版（7/7 通过）
+
+| 发行版 | 安装 | 多节点 | 高级测试 |
+|--------|------|--------|---------|
+| Rocky Linux 8 | ✅ | ✅ | ✅ 31/31 |
+| Rocky Linux 9 | ✅ | ✅ | ✅ 31/31 |
+| AlmaLinux 8 | ✅ | ✅ | ✅ 31/31 |
+| AlmaLinux 9 | ✅ | ✅ | ✅ 31/31 |
+| CentOS Stream 9 | ✅ | ✅ | ✅ 31/31 |
+| Fedora 40 | ✅ | ✅ | ✅ 31/31 |
+| openEuler 22.03 | ✅ | ✅ | ✅ 31/31 |
+
+### 本次修复的问题
+
+1. **Bash `((var++))` 在 var=0 时返回 exit code 1**
+   - 影响：所有 5 个测试脚本中的计数器变量
+   - 根因：`((0++))` 的结果值为 0，在 bash 中 0 是 falsy，返回 exit code 1，触发 `set -e` 终止脚本
+   - 修复：改为 `var=$((var + 1))`
+
+2. **`timeout` 在 `su -c` 内部无法传播信号**
+   - 影响：超时的测试脚本无法被终止，导致 CI 作业超时
+   - 根因：`su` 拦截信号但不转发给子进程
+   - 修复：将 `timeout` 移到 `su` 外部：`timeout --kill-after=10 300 su -s /bin/bash -c "..."`
+
+3. **分布式表批量 INSERT 挂起**
+   - 影响：`INSERT INTO distributed_table SELECT ... FROM generate_series()` 无限挂起
+   - 根因：OpenTenBase 分布式表的已知限制
+   - 修复：改用单行 INSERT 循环
+
+4. **psql 捕获 COMMIT 输出而非 SELECT 结果**
+   - 影响：事务隔离级别测试中读取到 "COMMIT" 而非实际数据
+   - 根因：`psql -c "BEGIN ...; SELECT ...; COMMIT;"` 返回最后一条语句的输出
+   - 修复：使用 `psql -1` 标志进行自动事务包装
+
+5. **CI 作业超时 30 分钟不够**
+   - 影响：高级测试在 30 分钟内无法完成
+   - 修复：增加到 60 分钟
+
+6. **端口冲突**
+   - 影响：multi-node-test.sh 遗留的 coordinator 占用端口 5432
+   - 修复：添加端口清理和 `wait_for_port_free()` 函数
+
+7. **Sharding map 初始化语法**
+   - 正确语法：`CREATE SHARDING GROUP TO GROUP <group_name>`
+
+### 性能基准数据（100 行数据集）
+
+| 测试项 | 说明 |
+|--------|------|
+| Bulk INSERT | 100 行单行插入 |
+| Full table scan | COUNT + SUM |
+| Filtered SELECT | WHERE 条件查询 |
+| JOIN query | 两表 JOIN |
+| Index effectiveness | 有无索引对比 |
+| ORDER BY + LIMIT | 排序查询 |
+
+---
+
 **验证完成日期：** 2026-05-18
-**最后更新：** 2026-05-28
+**最后更新：** 2026-05-30
