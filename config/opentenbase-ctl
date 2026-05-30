@@ -151,8 +151,9 @@ start_coord() {
 register_nodes() {
     # Register all nodes via coordinator using CREATE NODE / CREATE GTM NODE
     # v5.0 uses pgxc_node system table instead of gtm_host/gtm_port GUCs
-    local psql="$OTB_BIN/psql -h 127.0.0.1 -p $COORD_PORT -U $OTB_USER -d postgres -X -q -v ON_ERROR_STOP=0"
-    local dn1_psql="$OTB_BIN/psql -h 127.0.0.1 -p $DN1_PORT -U $OTB_USER -d postgres -X -q -v ON_ERROR_STOP=0"
+    # Use template1 because 'postgres' database may not exist yet after initdb
+    local psql="$OTB_BIN/psql -h 127.0.0.1 -p $COORD_PORT -U $OTB_USER -d template1 -X -q -v ON_ERROR_STOP=0"
+    local dn1_psql="$OTB_BIN/psql -h 127.0.0.1 -p $DN1_PORT -U $OTB_USER -d template1 -X -q -v ON_ERROR_STOP=0"
 
     echo "  registering GTM node in pgxc_node ..."
     run_as_otb bash -c "$psql -c \"CREATE GTM NODE gtm_master WITH (HOST='127.0.0.1', PORT=$GTM_PORT, PRIMARY);\"" 2>/dev/null || true
@@ -184,12 +185,19 @@ register_nodes() {
         run_as_otb bash -c "$dn1_psql -c \"ALTER NODE $COORD_NODENAME WITH (TYPE='coordinator', HOST='127.0.0.1', PORT=$COORD_PORT, FORWARD=$coord_fwd);\"" 2>/dev/null || true
         run_as_otb bash -c "$dn1_psql -c 'SELECT pgxc_pool_reload();'" >/dev/null 2>&1 || true
     fi
+
+    # Create 'postgres' database if it doesn't exist (initdb only creates template0/template1)
+    if ! run_as_otb bash -c "$psql -t -A -c \"SELECT 1 FROM pg_database WHERE datname='postgres';\"" 2>/dev/null | grep -q 1; then
+        echo "  creating postgres database ..."
+        run_as_otb "$OTB_BIN/createdb" -h 127.0.0.1 -p "$COORD_PORT" -U "$OTB_USER" postgres 2>/dev/null || true
+    fi
 }
 
 setup_node_group() {
     # Create default node group and sharding map if not already done
-    local psql="$OTB_BIN/psql -h 127.0.0.1 -p $COORD_PORT -U $OTB_USER -d postgres -X -q -v ON_ERROR_STOP=0"
-    local dn1_psql="$OTB_BIN/psql -h 127.0.0.1 -p $DN1_PORT -U $OTB_USER -d postgres -X -q -v ON_ERROR_STOP=0"
+    # Use template1 because pgxc_group is a global catalog visible from any database
+    local psql="$OTB_BIN/psql -h 127.0.0.1 -p $COORD_PORT -U $OTB_USER -d template1 -X -q -v ON_ERROR_STOP=0"
+    local dn1_psql="$OTB_BIN/psql -h 127.0.0.1 -p $DN1_PORT -U $OTB_USER -d template1 -X -q -v ON_ERROR_STOP=0"
 
     # Check if node group already exists on coordinator
     local has_group
