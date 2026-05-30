@@ -626,7 +626,14 @@ main "$@"
 
 ### 进行中 🔄
 
-- [ ] **Docker 镜像发布** — 发布到 GHCR（工作流待创建）
+- [x] **Docker 镜像发布** — workflow 已创建 (`docker-publish.yml`)，待首次发布
+
+### 已完成（Phase 3 - CDN）✅
+
+- [x] **Cloudflare CDN 加速** — apt.blackevil217.com / rpm.blackevil217.com
+  - DNS 记录已创建，开启 Cloudflare Proxy
+  - setup-apt.sh / setup-rpm.sh 已更新 CDN 镜像检测
+  - 镜像优先级：Cloudflare CDN → Gitee → GitHub Pages
 
 ### 待开始 ⏳
 

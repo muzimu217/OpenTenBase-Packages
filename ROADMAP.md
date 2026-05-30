@@ -626,7 +626,14 @@ This is the **standard route for official packaging of open source projects**, a
 
 ### In Progress 🔄
 
-- [ ] **Docker image publishing** — publish to GHCR (workflow pending)
+- [x] **Docker image publishing** — workflow created (`docker-publish.yml`), ready for first publish
+
+### Completed (Phase 3 - CDN) ✅
+
+- [x] **Cloudflare CDN acceleration** — apt.blackevil217.com / rpm.blackevil217.com
+  - DNS records created with Cloudflare Proxy enabled
+  - setup-apt.sh / setup-rpm.sh updated with CDN mirror detection
+  - Mirror priority: Cloudflare CDN → Gitee → GitHub Pages
 
 ### Pending ⏳
 
