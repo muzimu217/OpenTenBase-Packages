@@ -1,7 +1,7 @@
 # OpenTenBase 全面测试验证计划
 
 > 创建时间：2026-05-30
-> 版本：v5.0-p12
+> 版本：v5.0-p13
 > 状态：执行中
 
 ---
@@ -124,7 +124,7 @@
 | 工作流 | 最新运行 | 结果 | 详情 |
 |--------|----------|------|------|
 | build-multi.yml | 26688996831 | ✅ 7/7 DEB | 全部成功 |
-| build-rpm.yml | 26691145759 | ✅ 8/8 x86_64 + 1/1 arm64 | 全部成功 |
+| build-rpm.yml | 26721059489 | ✅ 25/25 x86_64 + 3/3 arm64 | 全部成功（含 Rocky/Alma ARM64） |
 | test-all.yml | 26716213953 | ✅ 22/22 jobs | v5.0 + v2.6.0 + v2.5.0 全部通过 |
 | docker-publish.yml | 26689388947 | ✅ 成功 | GHCR 发布成功 |
 
@@ -136,7 +136,7 @@
 | 节点注册 bug 修复 | ✅ | template1 方案 |
 | ARM64 hdspace 部署 | ✅ | openEuler 2.0 aarch64, 全流程通过 |
 | ARM64 分布式表 | ✅ | DISTRIBUTE BY SHARD + INSERT/SELECT |
-| Cloudflare CDN | ✅ | apt.blackevil217.com |
+| Cloudflare CDN | ✅ | server: cloudflare, 所有路径 200, cache-control: max-age=600 |
 | APT 仓库 | ✅ | 7 个 codename 全部 200（focal/jammy/noble/plucky/bullseye/bookworm/trixie） |
 | RPM 仓库 | ✅ | el8/el9/fedora/openeuler x86_64 repomd.xml 全部 200 |
 | Docker 镜像 | ✅ | ghcr.io/muzimu217/opentenbase-runtime:v5.0-p3 |
