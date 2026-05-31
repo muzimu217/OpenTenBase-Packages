@@ -160,6 +160,33 @@ cmd_init() {
         fi
     done
 
+    # Detect CPU cores and set GTM thread count
+    local cpu_cores
+    cpu_cores=$(nproc 2>/dev/null || echo "2")
+    local gtm_threads=$((cpu_cores < 4 ? cpu_cores : 4))
+    log_info "Detected ${cpu_cores} CPU cores, GTM threads: ${gtm_threads}"
+
+    # Detect available RAM and auto-tune memory settings
+    # OpenTenBase pooler cache requires ~1GB+ non-swappable shared memory per node
+    # Minimum recommended: 3GB RAM for single-machine cluster (GTM + coord + dn1)
+    local avail_ram_mb
+    avail_ram_mb=$(awk '/MemTotal/ {printf "%d", $2/1024}' /proc/meminfo 2>/dev/null || echo "4096")
+    log_info "Detected ${avail_ram_mb}MB RAM"
+    local mem_max_conn mem_max_pool mem_shared_buf
+    if [ "$avail_ram_mb" -lt 3000 ]; then
+        log_warn "OpenTenBase requires at least 3GB RAM for a single-machine cluster."
+        log_warn "Current system has ${avail_ram_mb}MB. Cluster may fail to start (OOM)."
+        log_warn "Consider using a server with 4GB+ RAM."
+        mem_max_conn=10; mem_max_pool=5; mem_shared_buf=16MB
+    elif [ "$avail_ram_mb" -lt 4096 ]; then
+        mem_max_conn=20; mem_max_pool=10; mem_shared_buf=32MB
+    elif [ "$avail_ram_mb" -lt 8192 ]; then
+        mem_max_conn=50; mem_max_pool=20; mem_shared_buf=128MB
+    else
+        mem_max_conn=100; mem_max_pool=100; mem_shared_buf=128MB
+    fi
+    log_info "Memory-tuned: max_connections=${mem_max_conn}, max_pool_size=${mem_max_pool}, shared_buffers=${mem_shared_buf}"
+
     # Create directories
     mkdir -p "${data}/gtm" "${data}/coord" "${data}/dn1" "${log}"
     if [[ "$svc_user" != "$(whoami)" ]]; then
@@ -172,25 +199,35 @@ cmd_init() {
         log_error "initgtm failed"
         exit 1
     }
+    # Configure GTM
+    sed -i "s/^port =.*/port = ${GTM_PORT}/" "${data}/gtm/gtm.conf"
+    sed -i "s/^nodename =.*/nodename = 'gtm_master'/" "${data}/gtm/gtm.conf"
 
-    # Initialize Datanode
+    # Initialize Datanode (with --master_gtm_* flags for GTM connection)
     log_info "Initializing Datanode..."
-    as_svc "$svc_user" "${bin}/initdb -D ${data}/dn1 --nodename=dn1" || {
+    as_svc "$svc_user" "${bin}/initdb" -D "${data}/dn1" \
+        --nodename=dn1 --nodetype=datanode \
+        --master_gtm_nodename=gtm_master --master_gtm_ip=127.0.0.1 --master_gtm_port="${GTM_PORT}" \
+        --locale=C.UTF-8 -E UTF8 -U "${svc_user}" || {
         log_error "Datanode initdb failed"
         exit 1
     }
 
-    # Configure Datanode
+    # Configure Datanode (no gtm_host/gtm_port — those are not valid GUCs)
     cat >> "${data}/dn1/postgresql.conf" <<DNCONF
-# -- OpenTenBase cluster config --
-gtm_host = '127.0.0.1'
-gtm_port = ${GTM_PORT}
-gtm_backup_host = ''
-gtm_backup_port = 0
-pooler_port = ${DN_POOLER_PORT}
-max_pool_size = 100
+
+# -- OpenTenBase datanode config --
 listen_addresses = '*'
 port = ${DN_PORT}
+forward_port = 6670
+pooler_port = ${DN_POOLER_PORT}
+pgxc_node_name = 'dn1'
+log_directory = '${log}'
+log_filename = 'dn1.log'
+logging_collector = on
+# -- memory auto-tuned for ${avail_ram_mb}MB RAM --
+max_connections = ${mem_max_conn}
+shared_buffers = ${mem_shared_buf}
 DNCONF
 
     cat > "${data}/dn1/pg_hba.conf" <<HBA
@@ -200,24 +237,32 @@ host    all             all             127.0.0.1/32            trust
 host    all             all             ::1/128                 trust
 HBA
 
-    # Initialize Coordinator
+    # Initialize Coordinator (with --master_gtm_* flags for GTM connection)
     log_info "Initializing Coordinator..."
-    as_svc "$svc_user" "${bin}/initdb -D ${data}/coord --nodename=coord" || {
+    as_svc "$svc_user" "${bin}/initdb" -D "${data}/coord" \
+        --nodename=coord --nodetype=coordinator \
+        --master_gtm_nodename=gtm_master --master_gtm_ip=127.0.0.1 --master_gtm_port="${GTM_PORT}" \
+        --locale=C.UTF-8 -E UTF8 -U "${svc_user}" || {
         log_error "Coordinator initdb failed"
         exit 1
     }
 
-    # Configure Coordinator
+    # Configure Coordinator (no gtm_host/gtm_port — those are not valid GUCs)
     cat >> "${data}/coord/postgresql.conf" <<COORDCONF
-# -- OpenTenBase cluster config --
-gtm_host = '127.0.0.1'
-gtm_port = ${GTM_PORT}
-gtm_backup_host = ''
-gtm_backup_port = 0
-pooler_port = ${COORD_POOLER_PORT}
-max_pool_size = 100
+
+# -- OpenTenBase coordinator config --
 listen_addresses = '*'
 port = ${COORD_PORT}
+forward_port = 6669
+pooler_port = ${COORD_POOLER_PORT}
+pgxc_node_name = 'coord'
+log_directory = '${log}'
+log_filename = 'coord.log'
+logging_collector = on
+# -- memory auto-tuned for ${avail_ram_mb}MB RAM --
+max_connections = ${mem_max_conn}
+max_pool_size = ${mem_max_pool}
+shared_buffers = ${mem_shared_buf}
 COORDCONF
 
     cat > "${data}/coord/pg_hba.conf" <<HBA
@@ -236,6 +281,102 @@ HBA
     log_info "Data directory: ${data}"
     log_info "Log directory:  ${log}"
     log_info "Run 'opentenbase-ctl start' to start the cluster"
+}
+
+# ---------------------------------------------------------------------------
+# Node registration — register all nodes via coordinator using SQL
+# v5.0 uses pgxc_node system table, not gtm_host/gtm_port GUCs
+# Uses template1 because 'postgres' database may not exist yet after initdb
+# ---------------------------------------------------------------------------
+register_nodes() {
+    local ver="$1"
+    local bin="${OT_BASE}/${ver}/bin"
+    local data="${OT_DATA}/${ver}"
+    local svc_user
+    svc_user=$(resolve_service_user)
+
+    local coord_psql="${bin}/psql -h 127.0.0.1 -p ${COORD_PORT} -U ${svc_user} -d template1 -X -q -v ON_ERROR_STOP=0"
+    local dn_psql="${bin}/psql -h 127.0.0.1 -p ${DN_PORT} -U ${svc_user} -d template1 -X -q -v ON_ERROR_STOP=0"
+
+    log_info "Registering nodes..."
+
+    # Register GTM node in coordinator
+    as_svc "$svc_user" bash -c "$coord_psql -c \"CREATE GTM NODE gtm_master WITH (HOST='127.0.0.1', PORT=${GTM_PORT}, PRIMARY);\"" 2>/dev/null || true
+    as_svc "$svc_user" bash -c "$coord_psql -c \"ALTER GTM NODE gtm_master WITH (HOST='127.0.0.1', PORT=${GTM_PORT}, PRIMARY);\"" 2>/dev/null || true
+
+    # Register coordinator node
+    as_svc "$svc_user" bash -c "$coord_psql -c \"CREATE NODE coord WITH (TYPE='coordinator', HOST='127.0.0.1', PORT=${COORD_PORT}, FORWARD=6669);\"" 2>/dev/null || true
+    as_svc "$svc_user" bash -c "$coord_psql -c \"ALTER NODE coord WITH (TYPE='coordinator', HOST='127.0.0.1', PORT=${COORD_PORT}, FORWARD=6669);\"" 2>/dev/null || true
+
+    # Register datanode node
+    as_svc "$svc_user" bash -c "$coord_psql -c \"CREATE NODE dn1 WITH (TYPE='datanode', HOST='127.0.0.1', PORT=${DN_PORT}, FORWARD=6670, PRIMARY, PREFERRED);\"" 2>/dev/null || true
+    as_svc "$svc_user" bash -c "$coord_psql -c \"ALTER NODE dn1 WITH (TYPE='datanode', HOST='127.0.0.1', PORT=${DN_PORT}, FORWARD=6670, PRIMARY, PREFERRED);\"" 2>/dev/null || true
+
+    # Reload pool on coordinator
+    as_svc "$svc_user" bash -c "$coord_psql -c 'SELECT pgxc_pool_reload();'" >/dev/null 2>&1 || true
+
+    # Propagate registrations to datanode
+    if [[ -f "${data}/dn1/postmaster.pid" ]] && kill -0 "$(head -1 "${data}/dn1/postmaster.pid")" 2>/dev/null; then
+        log_info "Propagating node registrations to datanode..."
+        as_svc "$svc_user" bash -c "$dn_psql -c \"CREATE GTM NODE gtm_master WITH (HOST='127.0.0.1', PORT=${GTM_PORT}, PRIMARY);\"" 2>/dev/null || true
+        as_svc "$svc_user" bash -c "$dn_psql -c \"ALTER GTM NODE gtm_master WITH (HOST='127.0.0.1', PORT=${GTM_PORT}, PRIMARY);\"" 2>/dev/null || true
+        as_svc "$svc_user" bash -c "$dn_psql -c \"CREATE NODE coord WITH (TYPE='coordinator', HOST='127.0.0.1', PORT=${COORD_PORT}, FORWARD=6669);\"" 2>/dev/null || true
+        as_svc "$svc_user" bash -c "$dn_psql -c \"ALTER NODE coord WITH (TYPE='coordinator', HOST='127.0.0.1', PORT=${COORD_PORT}, FORWARD=6669);\"" 2>/dev/null || true
+        as_svc "$svc_user" bash -c "$dn_psql -c 'SELECT pgxc_pool_reload();'" >/dev/null 2>&1 || true
+    fi
+
+    # Create 'postgres' database if it doesn't exist (initdb only creates template0/template1)
+    local coord_psql_postgres="${bin}/psql -h 127.0.0.1 -p ${COORD_PORT} -U ${svc_user} -d template1 -X -t -A -q"
+    if ! as_svc "$svc_user" bash -c "$coord_psql_postgres -c \"SELECT 1 FROM pg_database WHERE datname='postgres';\"" 2>/dev/null | grep -q 1; then
+        log_info "Creating postgres database..."
+        as_svc "$svc_user" "${bin}/createdb" -h 127.0.0.1 -p "${COORD_PORT}" -U "${svc_user}" postgres 2>/dev/null || true
+    fi
+}
+
+# ---------------------------------------------------------------------------
+# Node group and sharding setup
+# Creates default node group and sharding map for DISTRIBUTE BY SHARD support
+# ---------------------------------------------------------------------------
+setup_node_group() {
+    local ver="$1"
+    local bin="${OT_BASE}/${ver}/bin"
+    local svc_user
+    svc_user=$(resolve_service_user)
+
+    local coord_psql="${bin}/psql -h 127.0.0.1 -p ${COORD_PORT} -U ${svc_user} -d template1 -X -q -v ON_ERROR_STOP=0"
+    local dn_psql="${bin}/psql -h 127.0.0.1 -p ${DN_PORT} -U ${svc_user} -d template1 -X -q -v ON_ERROR_STOP=0"
+
+    # Check if node group already exists
+    local has_group
+    has_group=$(as_svc "$svc_user" bash -c "$coord_psql -t -A -c \"SELECT count(*) FROM pgxc_group WHERE group_name = 'default_group';\"" 2>/dev/null || echo "0")
+    if [[ "$has_group" == "1" ]]; then
+        return 0
+    fi
+
+    log_info "Setting up default node group..."
+
+    # Get datanode OID from coordinator
+    local dn_oid
+    dn_oid=$(as_svc "$svc_user" bash -c "$coord_psql -t -A -c \"SELECT oid FROM pgxc_node WHERE node_name = 'dn1' AND node_type = 'D';\"" 2>/dev/null)
+    if [[ -z "$dn_oid" ]]; then
+        log_warn "Could not find datanode OID, skipping node group setup"
+        return 0
+    fi
+
+    # Create node group on datanode first
+    as_svc "$svc_user" bash -c "$dn_psql -c \"CREATE DEFAULT NODE GROUP default_group WITH (dn1);\"" 2>/dev/null || true
+
+    # Insert node group into coordinator's catalog
+    as_svc "$svc_user" bash -c "$coord_psql -c \"INSERT INTO pgxc_group (group_name, default_group, group_members) VALUES ('default_group', 1, '${dn_oid}');\"" 2>/dev/null || true
+
+    # Reload pool
+    as_svc "$svc_user" bash -c "$coord_psql -c 'SELECT pgxc_pool_reload();'" >/dev/null 2>&1 || true
+
+    # Create sharding map
+    log_info "Creating sharding map..."
+    as_svc "$svc_user" bash -c "$coord_psql -c \"CREATE SHARDING GROUP TO GROUP default_group;\"" 2>/dev/null || true
+
+    log_ok "Node group setup complete"
 }
 
 cmd_start() {
@@ -304,6 +445,10 @@ cmd_start() {
     else
         log_ok "Coordinator already running (port ${COORD_PORT})"
     fi
+
+    # Register nodes and set up sharding after all processes are running
+    register_nodes "$ver"
+    setup_node_group "$ver"
 
     log_ok "Cluster started successfully"
 }

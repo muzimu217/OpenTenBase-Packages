@@ -36,6 +36,31 @@ cmd_init() {
     GTM_THREADS=$((CPU_CORES < 4 ? CPU_CORES : 4))
     echo ">> Detected $CPU_CORES CPU cores, setting GTM threads to $GTM_THREADS"
 
+    # 根据可用内存自动调整配置
+    # OpenTenBase 连接池缓存需要大量不可 swap 的共享内存
+    # 最低要求：3GB RAM（GTM + Coordinator + Datanode）
+    AVAIL_RAM_MB=$(awk '/MemTotal/ {printf "%d", $2/1024}' /proc/meminfo 2>/dev/null || echo "4096")
+    echo ">> Detected ${AVAIL_RAM_MB}MB RAM"
+    if [ "$AVAIL_RAM_MB" -lt 3000 ]; then
+        echo ">> WARNING: OpenTenBase requires at least 3GB RAM for a single-machine cluster."
+        echo ">>          Current system has ${AVAIL_RAM_MB}MB. Cluster may fail to start."
+        echo ">>          Consider using a server with 4GB+ RAM."
+    fi
+    if [ "$AVAIL_RAM_MB" -lt 4096 ]; then
+        MEM_MAX_CONN=20
+        MEM_MAX_POOL=10
+        MEM_SHARED_BUF=32MB
+    elif [ "$AVAIL_RAM_MB" -lt 8192 ]; then
+        MEM_MAX_CONN=50
+        MEM_MAX_POOL=20
+        MEM_SHARED_BUF=128MB
+    else
+        MEM_MAX_CONN=100
+        MEM_MAX_POOL=100
+        MEM_SHARED_BUF=128MB
+    fi
+    echo ">> Memory-tuned: max_connections=$MEM_MAX_CONN, max_pool_size=$MEM_MAX_POOL, shared_buffers=$MEM_SHARED_BUF"
+
     # GTM
     if [ ! -f "$GTM_PGDATA/gtm.conf" ]; then
         install -d -o "$OTB_USER" -g "$OTB_GROUP" -m 0700 "$GTM_PGDATA"
@@ -68,6 +93,10 @@ cmd_init() {
             echo "log_directory = '/var/log/opentenbase'"
             echo "log_filename = 'coord.log'"
             echo "logging_collector = on"
+            echo "# --- memory auto-tuned for ${AVAIL_RAM_MB}MB RAM ---"
+            echo "max_connections = $MEM_MAX_CONN"
+            echo "max_pool_size = $MEM_MAX_POOL"
+            echo "shared_buffers = $MEM_SHARED_BUF"
         } >> "$COORD_PGDATA/postgresql.conf"
         cp "$TPL_DIR/pg_hba.conf.template" "$COORD_PGDATA/pg_hba.conf"
         chown "$OTB_USER:$OTB_GROUP" "$COORD_PGDATA/pg_hba.conf"
@@ -93,6 +122,9 @@ cmd_init() {
             echo "log_directory = '/var/log/opentenbase'"
             echo "log_filename = 'dn1.log'"
             echo "logging_collector = on"
+            echo "# --- memory auto-tuned for ${AVAIL_RAM_MB}MB RAM ---"
+            echo "max_connections = $MEM_MAX_CONN"
+            echo "shared_buffers = $MEM_SHARED_BUF"
         } >> "$DN1_PGDATA/postgresql.conf"
         cp "$TPL_DIR/pg_hba.conf.template" "$DN1_PGDATA/pg_hba.conf"
         chown "$OTB_USER:$OTB_GROUP" "$DN1_PGDATA/pg_hba.conf"
@@ -104,10 +136,15 @@ cmd_init() {
 }
 
 wait_for_port() {
-    local host=127.0.0.1 port=$1 max=60
+    local port=$1 max=60
     for i in $(seq 1 $max); do
-        if (echo > "/dev/tcp/$host/$port") 2>/dev/null; then
-            return 0
+        # Use ss to check both IPv4 and IPv6 (GTM may bind to :: dual-stack)
+        if command -v ss >/dev/null 2>&1; then
+            ss -tlnp 2>/dev/null | grep -q ":${port} " && return 0
+        elif command -v netstat >/dev/null 2>&1; then
+            netstat -tlnp 2>/dev/null | grep -q ":${port} " && return 0
+        else
+            (echo > "/dev/tcp/127.0.0.1/$port") 2>/dev/null && return 0
         fi
         sleep 1
     done
@@ -247,15 +284,19 @@ stop_coord() {
 
 cmd_start() {
     ensure_dirs
+    local failed=0
     # Start ALL nodes first: gtm -> coord -> dn1
     # (Datanode finds GTM from its local postgresql.conf, not from pgxc_node)
     for n in $START_ORDER; do
         case $n in
-            gtm) start_gtm ;;
-            coord) start_coord ;;
-            dn1) start_dn1 ;;
+            gtm) start_gtm || { echo "ERROR: failed to start gtm"; failed=1; } ;;
+            coord) start_coord || { echo "ERROR: failed to start coord"; failed=1; } ;;
+            dn1) start_dn1 || { echo "ERROR: failed to start dn1"; failed=1; } ;;
         esac
     done
+    if [ "$failed" -eq 1 ]; then
+        echo ">> WARNING: some nodes failed to start, attempting registration anyway"
+    fi
     # Register nodes AFTER all processes are running.
     # Calling pgxc_pool_reload() before the datanode is listening causes the
     # pooler to block on a TCP connect (~120 s) which exceeds the test timeout.
