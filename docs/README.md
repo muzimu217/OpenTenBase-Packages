@@ -56,6 +56,25 @@ sudo dnf install opentenbase
 # RPM: sudo dnf install ./opentenbase-*.rpm
 ```
 
+### One-Click Deploy (Interactive)
+
+```bash
+curl -sSL https://raw.githubusercontent.com/muzimu217/OpenTenBase-deb/main/scripts/setup-cluster.sh | sudo bash
+```
+
+---
+
+## System Requirements
+
+| Resource | Minimum | Recommended | Notes |
+|----------|---------|-------------|-------|
+| **RAM** | 3 GB | 4 GB+ | OpenTenBase pooler cache requires ~1GB+ **non-swappable** shared memory per node. A single-machine cluster (GTM + Coordinator + Datanode) needs at least 3GB. |
+| **Disk** | 2 GB | 10 GB+ | Binary packages (~500MB) + data directory |
+| **CPU** | 1 core | 2+ cores | GTM thread count auto-detected from CPU cores |
+| **OS** | Ubuntu 20.04+, Debian 11+, RHEL 8+, Fedora 40+ | See platform matrix below | |
+
+> **Important**: The `opentenbase-ctl init` script automatically detects available RAM and tunes `max_connections`, `max_pool_size`, and `shared_buffers` accordingly. On servers with <4GB RAM, reduced settings are applied automatically. On servers with <3GB RAM, a warning is displayed as the cluster may fail to start due to OOM (Out of Memory).
+
 ---
 
 ## Package Inventory

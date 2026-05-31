@@ -48,6 +48,25 @@ curl -sSL https://raw.githubusercontent.com/muzimu217/OpenTenBase-deb/main/scrip
 sudo dnf install opentenbase
 ```
 
+### 一键部署（交互式）
+
+```bash
+curl -sSL https://raw.githubusercontent.com/muzimu217/OpenTenBase-deb/main/scripts/setup-cluster.sh | sudo bash
+```
+
+---
+
+## 系统要求
+
+| 资源 | 最低要求 | 推荐配置 | 说明 |
+|------|----------|----------|------|
+| **内存** | 3 GB | 4 GB+ | OpenTenBase 连接池缓存需要约 1GB+ **不可 swap** 的共享内存。单机集群（GTM + Coordinator + Datanode）至少需要 3GB。 |
+| **磁盘** | 2 GB | 10 GB+ | 二进制包（~500MB）+ 数据目录 |
+| **CPU** | 1 核 | 2+ 核 | GTM 线程数根据 CPU 核心数自动检测 |
+| **操作系统** | Ubuntu 20.04+, Debian 11+, RHEL 8+, Fedora 40+ | 见下方平台矩阵 | |
+
+> **重要说明**：`opentenbase-ctl init` 脚本会自动检测可用内存，并根据服务器配置调整 `max_connections`、`max_pool_size` 和 `shared_buffers` 参数。内存 <4GB 的服务器会自动使用精简配置，<3GB 的服务器会显示警告（集群可能因 OOM 无法启动）。
+
 ---
 
 ## 软件包清单

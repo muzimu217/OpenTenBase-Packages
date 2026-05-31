@@ -130,6 +130,10 @@
 | Rocky/Alma ARM64 构建失败 | ⏳ 待修复 | QEMU 依赖问题 |
 | /var/run 符号链接冲突 | ✅ 已修复 | Dockerfile 只复制 var/lib/ |
 | Docker 容器输出隔离 | ✅ 已修复 | volume mount |
+| 1.8GB 服务器 OOM | ⚠️ 已知限制 | 最低需要 3GB RAM，脚本已加入内存自动检测 |
+| wait_for_port IPv4-only | ✅ 已修复 | 改用 `ss -tlnp` 检测（支持 IPv6 dual-stack） |
+| gtm_host/gtm_port 非法 GUC | ✅ 已修复 | 使用 CREATE NODE SQL 注册节点 |
+| max_coordinators 非法 GUC | ✅ 已修复 | 从配置中移除 |
 
 ---
 
