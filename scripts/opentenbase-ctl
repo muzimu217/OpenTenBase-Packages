@@ -305,12 +305,24 @@ register_nodes() {
     as_svc "$svc_user" bash -c "$coord_psql -c \"ALTER GTM NODE gtm_master WITH (HOST='127.0.0.1', PORT=${GTM_PORT}, PRIMARY);\"" 2>/dev/null || true
 
     # Register coordinator node
-    as_svc "$svc_user" bash -c "$coord_psql -c \"CREATE NODE coord WITH (TYPE='coordinator', HOST='127.0.0.1', PORT=${COORD_PORT}, FORWARD=6669);\"" 2>/dev/null || true
-    as_svc "$svc_user" bash -c "$coord_psql -c \"ALTER NODE coord WITH (TYPE='coordinator', HOST='127.0.0.1', PORT=${COORD_PORT}, FORWARD=6669);\"" 2>/dev/null || true
+    # FORWARD parameter is only valid in v5.0+
+    if [[ "$ver" == "5.0" ]]; then
+        as_svc "$svc_user" bash -c "$coord_psql -c \"CREATE NODE coord WITH (TYPE='coordinator', HOST='127.0.0.1', PORT=${COORD_PORT}, FORWARD=6669);\"" 2>/dev/null || true
+        as_svc "$svc_user" bash -c "$coord_psql -c \"ALTER NODE coord WITH (TYPE='coordinator', HOST='127.0.0.1', PORT=${COORD_PORT}, FORWARD=6669);\"" 2>/dev/null || true
+    else
+        as_svc "$svc_user" bash -c "$coord_psql -c \"CREATE NODE coord WITH (TYPE='coordinator', HOST='127.0.0.1', PORT=${COORD_PORT});\"" 2>/dev/null || true
+        as_svc "$svc_user" bash -c "$coord_psql -c \"ALTER NODE coord WITH (TYPE='coordinator', HOST='127.0.0.1', PORT=${COORD_PORT});\"" 2>/dev/null || true
+    fi
 
     # Register datanode node
-    as_svc "$svc_user" bash -c "$coord_psql -c \"CREATE NODE dn1 WITH (TYPE='datanode', HOST='127.0.0.1', PORT=${DN_PORT}, FORWARD=6670, PRIMARY, PREFERRED);\"" 2>/dev/null || true
-    as_svc "$svc_user" bash -c "$coord_psql -c \"ALTER NODE dn1 WITH (TYPE='datanode', HOST='127.0.0.1', PORT=${DN_PORT}, FORWARD=6670, PRIMARY, PREFERRED);\"" 2>/dev/null || true
+    # FORWARD parameter is only valid in v5.0+
+    if [[ "$ver" == "5.0" ]]; then
+        as_svc "$svc_user" bash -c "$coord_psql -c \"CREATE NODE dn1 WITH (TYPE='datanode', HOST='127.0.0.1', PORT=${DN_PORT}, FORWARD=6670, PRIMARY, PREFERRED);\"" 2>/dev/null || true
+        as_svc "$svc_user" bash -c "$coord_psql -c \"ALTER NODE dn1 WITH (TYPE='datanode', HOST='127.0.0.1', PORT=${DN_PORT}, FORWARD=6670, PRIMARY, PREFERRED);\"" 2>/dev/null || true
+    else
+        as_svc "$svc_user" bash -c "$coord_psql -c \"CREATE NODE dn1 WITH (TYPE='datanode', HOST='127.0.0.1', PORT=${DN_PORT}, PRIMARY, PREFERRED);\"" 2>/dev/null || true
+        as_svc "$svc_user" bash -c "$coord_psql -c \"ALTER NODE dn1 WITH (TYPE='datanode', HOST='127.0.0.1', PORT=${DN_PORT}, PRIMARY, PREFERRED);\"" 2>/dev/null || true
+    fi
 
     # Reload pool on coordinator
     as_svc "$svc_user" bash -c "$coord_psql -c 'SELECT pgxc_pool_reload();'" >/dev/null 2>&1 || true
@@ -320,8 +332,14 @@ register_nodes() {
         log_info "Propagating node registrations to datanode..."
         as_svc "$svc_user" bash -c "$dn_psql -c \"CREATE GTM NODE gtm_master WITH (HOST='127.0.0.1', PORT=${GTM_PORT}, PRIMARY);\"" 2>/dev/null || true
         as_svc "$svc_user" bash -c "$dn_psql -c \"ALTER GTM NODE gtm_master WITH (HOST='127.0.0.1', PORT=${GTM_PORT}, PRIMARY);\"" 2>/dev/null || true
-        as_svc "$svc_user" bash -c "$dn_psql -c \"CREATE NODE coord WITH (TYPE='coordinator', HOST='127.0.0.1', PORT=${COORD_PORT}, FORWARD=6669);\"" 2>/dev/null || true
-        as_svc "$svc_user" bash -c "$dn_psql -c \"ALTER NODE coord WITH (TYPE='coordinator', HOST='127.0.0.1', PORT=${COORD_PORT}, FORWARD=6669);\"" 2>/dev/null || true
+        # FORWARD parameter is only valid in v5.0+
+        if [[ "$ver" == "5.0" ]]; then
+            as_svc "$svc_user" bash -c "$dn_psql -c \"CREATE NODE coord WITH (TYPE='coordinator', HOST='127.0.0.1', PORT=${COORD_PORT}, FORWARD=6669);\"" 2>/dev/null || true
+            as_svc "$svc_user" bash -c "$dn_psql -c \"ALTER NODE coord WITH (TYPE='coordinator', HOST='127.0.0.1', PORT=${COORD_PORT}, FORWARD=6669);\"" 2>/dev/null || true
+        else
+            as_svc "$svc_user" bash -c "$dn_psql -c \"CREATE NODE coord WITH (TYPE='coordinator', HOST='127.0.0.1', PORT=${COORD_PORT});\"" 2>/dev/null || true
+            as_svc "$svc_user" bash -c "$dn_psql -c \"ALTER NODE coord WITH (TYPE='coordinator', HOST='127.0.0.1', PORT=${COORD_PORT});\"" 2>/dev/null || true
+        fi
         as_svc "$svc_user" bash -c "$dn_psql -c 'SELECT pgxc_pool_reload();'" >/dev/null 2>&1 || true
     fi
 

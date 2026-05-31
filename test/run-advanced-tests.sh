@@ -166,9 +166,15 @@ COORD_PSQL="${BIN_DIR}/psql -h 127.0.0.1 -p ${COORD_PORT} -U ${SVC_USER} -d post
 DN_PSQL="${BIN_DIR}/psql -h 127.0.0.1 -p ${DN_PORT} -U ${SVC_USER} -d postgres -X -q"
 
 as_svc "${COORD_PSQL} -c \"CREATE GTM NODE gtm_master WITH (HOST='127.0.0.1', PORT=${GTM_PORT}, PRIMARY);\"" || true
-as_svc "${COORD_PSQL} -c \"CREATE NODE dn1 WITH (TYPE='datanode', HOST='127.0.0.1', PORT=${DN_PORT}, FORWARD=6670, PRIMARY, PREFERRED);\"" || true
+# FORWARD parameter is only valid in v5.0+
+if [ "${OTB_VERSION:-5.0}" = "5.0" ]; then
+    as_svc "${COORD_PSQL} -c \"CREATE NODE dn1 WITH (TYPE='datanode', HOST='127.0.0.1', PORT=${DN_PORT}, FORWARD=6670, PRIMARY, PREFERRED);\"" || true
+    as_svc "${DN_PSQL} -c \"CREATE NODE coord WITH (TYPE='coordinator', HOST='127.0.0.1', PORT=${COORD_PORT}, FORWARD=6669);\"" || true
+else
+    as_svc "${COORD_PSQL} -c \"CREATE NODE dn1 WITH (TYPE='datanode', HOST='127.0.0.1', PORT=${DN_PORT}, PRIMARY, PREFERRED);\"" || true
+    as_svc "${DN_PSQL} -c \"CREATE NODE coord WITH (TYPE='coordinator', HOST='127.0.0.1', PORT=${COORD_PORT});\"" || true
+fi
 as_svc "${DN_PSQL} -c \"CREATE GTM NODE gtm_master WITH (HOST='127.0.0.1', PORT=${GTM_PORT}, PRIMARY);\"" || true
-as_svc "${DN_PSQL} -c \"CREATE NODE coord WITH (TYPE='coordinator', HOST='127.0.0.1', PORT=${COORD_PORT}, FORWARD=6669);\"" || true
 
 # Create default node group
 log "Creating default node group..."

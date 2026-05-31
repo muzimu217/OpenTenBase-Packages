@@ -19,13 +19,30 @@
 set -euo pipefail
 
 # ---------------------------------------------------------------------------
+# Parse arguments
+# ---------------------------------------------------------------------------
+DEFAULT_VERSION="5.0"
+for arg in "$@"; do
+    case "$arg" in
+        --version=*) DEFAULT_VERSION="${arg#*=}" ;;
+        --version)   ;; # next arg handled below
+        5.0|2.6.0|2.5.0) DEFAULT_VERSION="$arg" ;;
+    esac
+done
+# Handle "--version VALUE" (space-separated)
+prev=""
+for arg in "$@"; do
+    if [[ "$prev" == "--version" ]]; then DEFAULT_VERSION="$arg"; fi
+    prev="$arg"
+done
+
+# ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
 OT_BASE="/usr/lib/opentenbase"
 OT_SYSCONF="/etc/opentenbase"
 OT_DATA="/var/lib/opentenbase"
 OT_LOG="/var/log/opentenbase"
-DEFAULT_VERSION="5.0"
 
 # Default ports
 DEFAULT_GTM_PORT=6666
@@ -332,6 +349,7 @@ setup_apt_repo() {
     local cf_url="https://apt.blackevil217.com/apt"
     local gitee_url="https://blackEvil217.gitee.io/opentenbase-packages/apt"
     local github_url="https://muzimu217.github.io/OpenTenBase-deb/apt"
+    local expected_fp="D8B2E316E1FF88EE178703549D8FA46F3A55D5F0"
 
     local repo_url=""
     for url in "$cf_url" "$gitee_url" "$github_url"; do
@@ -348,36 +366,58 @@ setup_apt_repo() {
 
     log_info "Using mirror: ${repo_url}"
 
-    # Add GPG key
+    # Map version to APT component
+    local component="main"
+    case "$DEFAULT_VERSION" in
+        2.6.0|2.6) component="v2.6" ;;
+        2.5.0|2.5) component="v2.5" ;;
+    esac
+    log_info "Version ${DEFAULT_VERSION} -> component: ${component}"
+
+    # Add GPG key with fingerprint verification
     mkdir -p /usr/share/keyrings
     local tmpkey
     tmpkey=$(mktemp /tmp/otb-gpg-XXXXXX.asc)
-    if curl -sL --connect-timeout 10 --max-time 30 "${repo_url}/gpg-key.asc" -o "$tmpkey" 2>/dev/null && \
-       head -1 "$tmpkey" | grep -q "BEGIN PGP"; then
-        gpg --batch --dearmor -o /usr/share/keyrings/opentenbase-archive-keyring.gpg < "$tmpkey" 2>/dev/null
-        chmod 644 /usr/share/keyrings/opentenbase-archive-keyring.gpg
-        rm -f "$tmpkey"
-    else
-        rm -f "$tmpkey"
-        log_error "GPG key download failed"
+    local imported=false
+    for url in "${repo_url}/gpg-key.asc" "${github_url}/gpg-key.asc"; do
+        if curl -sL --connect-timeout 10 --max-time 30 "$url" -o "$tmpkey" 2>/dev/null && \
+           [ -s "$tmpkey" ] && head -1 "$tmpkey" | grep -q "BEGIN PGP"; then
+            local got_fp
+            got_fp=$(gpg --show-keys --with-colons "$tmpkey" 2>/dev/null | awk -F: '/^fpr:/{print $10; exit}')
+            if [[ "$got_fp" != "$expected_fp" ]]; then
+                log_warn "GPG fingerprint mismatch from $url, skipping"
+                continue
+            fi
+            gpg --batch --dearmor -o /usr/share/keyrings/opentenbase-archive-keyring.gpg < "$tmpkey" 2>/dev/null
+            chmod 644 /usr/share/keyrings/opentenbase-archive-keyring.gpg
+            imported=true
+            break
+        fi
+    done
+    rm -f "$tmpkey"
+
+    if [[ "$imported" != "true" ]]; then
+        log_error "GPG key import failed"
         exit 1
     fi
+    log_ok "GPG key imported (fingerprint verified)"
 
     # Configure source
     cat > /etc/apt/sources.list.d/opentenbase.list <<EOF
-# OpenTenBase APT Repository
-deb [signed-by=/usr/share/keyrings/opentenbase-archive-keyring.gpg] ${repo_url} ${CODENAME} main
+# OpenTenBase APT Repository — v${DEFAULT_VERSION}
+deb [signed-by=/usr/share/keyrings/opentenbase-archive-keyring.gpg] ${repo_url} ${CODENAME} ${component}
 EOF
     chmod 644 /etc/apt/sources.list.d/opentenbase.list
 
     apt-get update -qq 2>/dev/null || log_warn "apt-get update failed"
-    log_ok "APT repository configured"
+    log_ok "APT repository configured (component: ${component})"
 }
 
 setup_rpm_repo() {
     local cf_url="https://apt.blackevil217.com/rpm"
     local gitee_url="https://blackEvil217.gitee.io/opentenbase-packages/rpm"
     local github_url="https://muzimu217.github.io/OpenTenBase-deb/rpm"
+    local expected_fp="D8B2E316E1FF88EE178703549D8FA46F3A55D5F0"
 
     local repo_url=""
     for url in "$cf_url" "$gitee_url" "$github_url"; do
@@ -394,18 +434,31 @@ setup_rpm_repo() {
 
     log_info "Using mirror: ${repo_url}"
 
-    # Import GPG key
+    # Import GPG key with fingerprint verification
     local tmpkey
     tmpkey=$(mktemp /tmp/otb-gpg-XXXXXX.asc)
-    if curl -sL --connect-timeout 10 --max-time 30 "${repo_url}/gpg-key.asc" -o "$tmpkey" 2>/dev/null && \
-       head -1 "$tmpkey" | grep -q "BEGIN PGP"; then
-        rpm --import "$tmpkey" 2>/dev/null || true
-        rm -f "$tmpkey"
-    else
-        rm -f "$tmpkey"
-        log_error "GPG key download failed"
+    local imported=false
+    for url in "${repo_url}/gpg-key.asc" "${github_url}/gpg-key.asc"; do
+        if curl -sL --connect-timeout 10 --max-time 30 "$url" -o "$tmpkey" 2>/dev/null && \
+           [ -s "$tmpkey" ] && head -1 "$tmpkey" | grep -q "BEGIN PGP"; then
+            local got_fp
+            got_fp=$(gpg --show-keys --with-colons "$tmpkey" 2>/dev/null | awk -F: '/^fpr:/{print $10; exit}')
+            if [[ "$got_fp" != "$expected_fp" ]]; then
+                log_warn "GPG fingerprint mismatch from $url, skipping"
+                continue
+            fi
+            rpm --import "$tmpkey" 2>/dev/null || true
+            imported=true
+            break
+        fi
+    done
+    rm -f "$tmpkey"
+
+    if [[ "$imported" != "true" ]]; then
+        log_error "GPG key import failed"
         exit 1
     fi
+    log_ok "GPG key imported (fingerprint verified)"
 
     # Detect repo subdir
     local repo_subdir
