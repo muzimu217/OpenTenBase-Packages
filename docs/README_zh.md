@@ -97,7 +97,7 @@ curl -sSL https://raw.githubusercontent.com/muzimu217/OpenTenBase-deb/main/scrip
 | Rocky Linux | 8 / 9 | — | ✅ | ✅ | ✅ | 已验证 |
 | AlmaLinux | 8 / 9 | — | ✅ | ✅ | ✅ | 已验证 |
 | Fedora | 40 | — | ✅ | ✅ | ✅ | 已验证 |
-| OpenEuler | 22.03 | — | ✅ | ✅ | ✅ | 已验证 |
+| OpenEuler | 22.03 | — | ✅ | ✅ | ✅ | ✅ 已验证（hdspace 实测） |
 
 ---
 
@@ -418,4 +418,4 @@ OpenTenBase-packages/
 ---
 
 **维护者**：muzimu217
-**最后更新**：2026-05-28
+**最后更新**：2026-05-31（ARM64 验证通过）

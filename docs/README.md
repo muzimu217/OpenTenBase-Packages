@@ -103,6 +103,8 @@ curl -sSL https://raw.githubusercontent.com/muzimu217/OpenTenBase-deb/main/scrip
 | openEuler | 22.03 | — | ✅ |
 
 > **Total**: 15 distros, 150 packages per release (126 DEB + 24 RPM) — 3 versions × 15 distros
+>
+> **ARM64 Verified**: openEuler 22.03 aarch64 tested on hdspace cloud (4vCPU, 7.2GB RAM) — full cluster deployment, SQL connectivity, and distributed table operations confirmed.
 
 ---
 
@@ -418,4 +420,4 @@ Same as OpenTenBase — [Apache License 2.0](https://www.apache.org/licenses/LIC
 ---
 
 **Maintainer**: muzimu217
-**Last Updated**: 2026-05-29 (v5.0-p3)
+**Last Updated**: 2026-05-31 (v5.0-p3, ARM64 verified)

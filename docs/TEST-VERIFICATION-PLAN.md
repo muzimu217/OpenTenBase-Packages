@@ -1,7 +1,7 @@
 # OpenTenBase 全面测试验证计划
 
 > 创建时间：2026-05-30
-> 版本：v5.0-p7
+> 版本：v5.0-p8
 > 状态：执行中
 
 ---
@@ -78,6 +78,10 @@
 | 集群初始化 | 47.108.249.115 | ✅ | GTM + CN + DN |
 | SQL 验证 | 47.108.249.115 | ✅ | CRUD 操作 |
 | 性能测试 | 47.108.249.115 | ✅ | 基准测试完成 |
+| ARM64 安装 | hdspace otb_ubu_test | ✅ | openEuler 2.0 aarch64, 4vCPU 7.2GB |
+| ARM64 集群初始化 | hdspace otb_ubu_test | ✅ | opentenbase-ctl init + start |
+| ARM64 SQL 验证 | hdspace otb_ubu_test | ✅ | DISTRIBUTE BY SHARD, INSERT, SELECT |
+| ARM64 节点注册 | hdspace otb_ubu_test | ✅ | pgxc_node: gtm_master + coord1 + dn1 |
 
 ---
 
@@ -95,8 +99,9 @@
 
 | 服务器 | IP | 系统 | 配置 | 用途 |
 |--------|-----|------|------|------|
-| 云服务器 | 47.108.249.115 | Alibaba Cloud Linux 3 | 2核1.8GB | 安装验证 |
-| 本地 VM | - | Ubuntu 24.04 | - | 功能测试 |
+| 云服务器 | 47.108.249.115 | Alibaba Cloud Linux 3 | 2核1.8GB | 安装验证（内存不足，OOM） |
+| hdspace otb_ubu_test | hdspace tunnel | openEuler 2.0 aarch64 | 4vCPU 7.2GB | ARM64 全功能验证 |
+| hdspace DevEnvVM | hdspace tunnel | openEuler 2.0 aarch64 | 4vCPU 8GB | ARM64 备用环境 |
 
 ---
 
@@ -117,6 +122,8 @@
 |------|------|------|
 | 服务器安装 | ✅ | Ubuntu 24.04 |
 | 节点注册 bug 修复 | ✅ | template1 方案 |
+| ARM64 hdspace 部署 | ✅ | openEuler 2.0 aarch64, 全流程通过 |
+| ARM64 分布式表 | ✅ | DISTRIBUTE BY SHARD + INSERT/SELECT |
 | Cloudflare CDN | ✅ | apt.blackevil217.com |
 | Docker 镜像 | ✅ | ghcr.io 发布 |
 
@@ -134,6 +141,8 @@
 | wait_for_port IPv4-only | ✅ 已修复 | 改用 `ss -tlnp` 检测（支持 IPv6 dual-stack） |
 | gtm_host/gtm_port 非法 GUC | ✅ 已修复 | 使用 CREATE NODE SQL 注册节点 |
 | max_coordinators 非法 GUC | ✅ 已修复 | 从配置中移除 |
+| ARM64 RPM 未发布到 CDN | ⏳ 待修复 | CI 构建有 aarch64 RPM 但未部署到仓库 |
+| hdspace GitHub 下载慢 | ⚠️ 已知限制 | ~20KB/s，9.5MB RPM 需 ~8 分钟 |
 
 ---
 
@@ -206,6 +215,6 @@ psql -h 127.0.0.1 -p 5432 -U opentenbase -d postgres -c "
 
 ---
 
-**计划版本**: 1.0
-**最后更新**: 2026-05-30
+**计划版本**: 1.1
+**最后更新**: 2026-05-31
 **维护者**: muzimu217
