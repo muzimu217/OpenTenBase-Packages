@@ -36,6 +36,7 @@ jobs:
       - name: Install OpenTenBase
         env:
           OTB_VERSION: ${{ inputs.version || '5.0' }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # Download DEB packages from latest release
           RELEASE_TAG=$(curl -sL "https://api.github.com/repos/muzimu217/OpenTenBase-deb/releases/latest" | jq -r '.tag_name')
@@ -58,8 +59,6 @@ jobs:
 
           sudo dpkg --force-depends -i *.deb || true
           sudo ldconfig
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Initialize cluster
         env:
