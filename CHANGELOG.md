@@ -6,6 +6,31 @@ Format based on [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [v5.0-p9] — 2026-06-01
+
+Multi-version end-to-end verification on real ARM64 hardware.
+
+### Added
+- Multi-version end-to-end verification on DevEnvVM (HCE 2.0 ARM64, 4vCPUs, 8GB RAM)
+  - Verified complete version switching flow: v5.0 → v2.6.0 → v2.5.0 → v5.0
+  - Each version successfully: init → start → SQL query → stop
+  - No residual conflicts between versions during switching
+  - All three versions (2.5.0, 2.6.0, 5.0) coexist and switch cleanly
+
+### Verification Results
+| Version | init | start | SQL query | stop | Switch to next |
+|---------|------|-------|-----------|------|----------------|
+| v5.0 | ✅ | ✅ | ✅ | ✅ | ✅ |
+| v2.6.0 | ✅ | ✅ | ✅ | ✅ | ✅ |
+| v2.5.0 | ✅ | ✅ | ✅ | ✅ | ✅ |
+| v5.0 (return) | ✅ | ✅ | ✅ | ✅ | — |
+
+### Updated
+- TEST-PLAN.md: RPM aarch64 version switch status updated to "已完成"
+- MULTI-VERSION-PLAN.md: opentenbase-switch-version end-to-end verification marked complete
+
+---
+
 ## [v5.0-p8] — 2026-06-01
 
 Stress test suite and cross-machine multi-node deployment verification.

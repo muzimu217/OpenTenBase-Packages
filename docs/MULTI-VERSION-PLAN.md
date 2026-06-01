@@ -169,7 +169,7 @@ sudo dnf install opentenbase-2.5.0
 
 - [x] 多版本文件共存验证 — DevEnvVM (HCE 2.0 ARM64) 上 3 个版本 (2.5.0, 2.6.0, 5.0) 文件共存正常
 - [x] 各版本独立 init/start/SQL 验证 — v5.0 在 Ubuntu 24.04 和 HCE 2.0 上端到端通过
-- [ ] opentenbase-switch-version 端到端验证 — 未在同一系统上做过完整的版本切换 + init/start/SQL 测试
+- [x] opentenbase-switch-version 端到端验证 — DevEnvVM (HCE 2.0 ARM64) 上 v5.0/v2.6.0/v2.5.0 完整切换 + init/start/SQL/stop 验证通过
 
 ## 时间线
 

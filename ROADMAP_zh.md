@@ -657,6 +657,15 @@ main "$@"
   - 内联集群搭建（GTM + Coordinator + Datanode）含完整节点注册
   - 单行 INSERT（generate_series 批量 INSERT 在 CI 分布式表上太慢）
 
+### 已完成（Phase 3 - 多版本端到端验证）✅
+
+- [x] **多版本端到端验证** — DevEnvVM (HCE 2.0 ARM64) 真实硬件验证
+  - 验证完整版本切换流程：v5.0 → v2.6.0 → v2.5.0 → v5.0
+  - 每个版本成功完成：init → start → SQL 查询 → stop
+  - 版本切换无残留冲突
+  - 三个版本 (2.5.0, 2.6.0, 5.0) 共存并干净切换
+  - 测试环境：4vCPUs, 8GB RAM, ARM64 架构
+
 ---
 
 ## 所需资源

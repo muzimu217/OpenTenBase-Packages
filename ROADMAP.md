@@ -657,6 +657,15 @@ This is the **standard route for official packaging of open source projects**, a
   - Inline cluster setup (GTM + Coordinator + Datanode) with proper node registration
   - Single-row INSERTs (bulk INSERT via generate_series is too slow on distributed tables in CI)
 
+### Completed (Phase 3 - Multi-version E2E) ✅
+
+- [x] **Multi-version end-to-end verification** — DevEnvVM (HCE 2.0 ARM64) real hardware validation
+  - Verified complete version switching flow: v5.0 → v2.6.0 → v2.5.0 → v5.0
+  - Each version successfully: init → start → SQL query → stop
+  - No residual conflicts between versions during switching
+  - All three versions (2.5.0, 2.6.0, 5.0) coexist and switch cleanly
+  - Test environment: 4vCPUs, 8GB RAM, ARM64 architecture
+
 ---
 
 ## Required Resources
