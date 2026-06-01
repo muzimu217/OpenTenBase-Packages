@@ -9,7 +9,7 @@
 
 set -e
 
-REPO="muzimu217/OpenTenBase-deb"
+REPO="muzimu217/OpenTenBase-Packages"
 UPSTREAM_REPO="OpenTenBase/OpenTenBase"
 DEFAULT_VERSION="5.0"
 DEFAULT_TAG="v5.0-multi10"
@@ -351,13 +351,13 @@ STOP_ORDER="coord dn1 gtm"
 CONF
 
     # Install opentenbase-ctl if it exists in our repo
-    if [ -f "/tmp/OpenTenBase-deb/config/opentenbase-ctl" ]; then
-        install -D -m 0755 "/tmp/OpenTenBase-deb/config/opentenbase-ctl" /usr/bin/opentenbase-ctl
+    if [ -f "/tmp/OpenTenBase-Packages/config/opentenbase-ctl" ]; then
+        install -D -m 0755 "/tmp/OpenTenBase-Packages/config/opentenbase-ctl" /usr/bin/opentenbase-ctl
     fi
 
     # Install switch-version script
-    if [ -f "/tmp/OpenTenBase-deb/scripts/switch-version.sh" ]; then
-        install -D -m 0755 "/tmp/OpenTenBase-deb/scripts/switch-version.sh" /usr/bin/opentenbase-switch-version
+    if [ -f "/tmp/OpenTenBase-Packages/scripts/switch-version.sh" ]; then
+        install -D -m 0755 "/tmp/OpenTenBase-Packages/scripts/switch-version.sh" /usr/bin/opentenbase-switch-version
     fi
 
     # Create versioned data/log directories

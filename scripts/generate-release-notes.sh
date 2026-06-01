@@ -14,7 +14,7 @@ set -euo pipefail
 # Configuration
 # ---------------------------------------------------------------------------
 REPO_OWNER="muzimu217"
-REPO_NAME="OpenTenBase-deb"
+REPO_NAME="OpenTenBase-Packages"
 REPO_URL="https://github.com/${REPO_OWNER}/${REPO_NAME}"
 
 # Colors
@@ -171,7 +171,7 @@ sudo rpm -ivh opentenbase-*.rpm
 
 \`\`\`bash
 git clone ${REPO_URL}.git
-cd OpenTenBase-deb/docker/dev
+cd OpenTenBase-Packages/docker/dev
 docker-compose -f docker-compose.dev.yml run --rm builder
 docker-compose -f docker-compose.dev.yml up -d
 \`\`\`

@@ -1,4 +1,4 @@
-# OpenTenBase-deb 改进计划
+# OpenTenBase-Packages 改进计划
 
 > **状态：已归档** — 本计划已完成，内容合并至 [ROADMAP.md](../ROADMAP.md)。
 > 如需查看历史规划，请保留本文档。
@@ -23,7 +23,7 @@
 **目标结构：**
 
 ```
-OpenTenBase-deb/
+OpenTenBase-Packages/
 ├── .devcontainer/          # VSCode DevContainer 配置
 ├── .github/workflows/      # CI/CD 工作流
 ├── config/                 # 配置文件模板（新增）
@@ -158,8 +158,8 @@ OpenTenBase-deb/
 
 ## 参考链接
 
-- 仓库地址：https://github.com/muzimu217/OpenTenBase-deb
-- 最新 Release：https://github.com/muzimu217/OpenTenBase-deb/releases/tag/v5.0-p9
+- 仓库地址：https://github.com/muzimu217/OpenTenBase-Packages
+- 最新 Release：https://github.com/muzimu217/OpenTenBase-Packages/releases/tag/v5.0-p9
 - 上游仓库：https://github.com/OpenTenBase/OpenTenBase
 
 **Update 2026-06-01:** Multi-version end-to-end verification completed on real ARM64 hardware (DevEnvVM, HCE 2.0, 4vCPUs, 8GB). All three versions (v5.0, v2.6.0, v2.5.0) verified: init → start → SQL query → stop → switch. Fixed max_pool_size >= max_connections and forward_port version-conditional issues.

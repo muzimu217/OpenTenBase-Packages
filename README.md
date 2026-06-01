@@ -4,7 +4,7 @@ English | [中文](README_zh.md)
 
 > **Official cross-platform package repository for OpenTenBase** — Enterprise-grade multi-format, multi-distro packaging and distribution for the OpenTenBase distributed SQL database.
 >
-> **[Quick Start Guide (快速开始)](QUICKSTART.md)** — 5 minutes to install and run.
+> **[Quick Start Guide (快速开始)](docs/QUICKSTART.md)** — 5 minutes to install and run.
 
 ---
 
@@ -38,7 +38,7 @@ English | [中文](README_zh.md)
 ### APT Repository (Ubuntu / Debian) — Recommended
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/muzimu217/OpenTenBase-deb/main/scripts/setup-apt.sh | sudo bash
+curl -sSL https://raw.githubusercontent.com/muzimu217/OpenTenBase-Packages/main/scripts/setup-apt.sh | sudo bash
 sudo apt update
 sudo apt install opentenbase
 ```
@@ -46,14 +46,14 @@ sudo apt install opentenbase
 ### YUM/DNF Repository (RHEL / CentOS / Fedora)
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/muzimu217/OpenTenBase-deb/main/scripts/setup-rpm.sh | sudo bash
+curl -sSL https://raw.githubusercontent.com/muzimu217/OpenTenBase-Packages/main/scripts/setup-rpm.sh | sudo bash
 sudo dnf install opentenbase
 ```
 
 ### Manual Install
 
 ```bash
-# Download from releases: https://github.com/muzimu217/OpenTenBase-deb/releases
+# Download from releases: https://github.com/muzimu217/OpenTenBase-Packages/releases
 # DEB: sudo apt install ./opentenbase_*.deb
 # RPM: sudo dnf install ./opentenbase-*.rpm
 ```
@@ -61,7 +61,7 @@ sudo dnf install opentenbase
 ### One-Click Deploy (Interactive)
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/muzimu217/OpenTenBase-deb/main/scripts/setup-cluster.sh | sudo bash
+curl -sSL https://raw.githubusercontent.com/muzimu217/OpenTenBase-Packages/main/scripts/setup-cluster.sh | sudo bash
 ```
 
 ---
@@ -135,7 +135,7 @@ Deploy a complete OpenTenBase cluster (GTM + Coordinator + 2 Datanodes) with Doc
 
 ```bash
 # Download the deployment script
-curl -sLO https://raw.githubusercontent.com/muzimu217/OpenTenBase-deb/main/docker/test-docker.sh
+curl -sLO https://raw.githubusercontent.com/muzimu217/OpenTenBase-Packages/main/docker/test-docker.sh
 bash test-docker.sh
 
 # Start the cluster
@@ -246,7 +246,7 @@ OpenTenBase supports two deployment approaches:
 | **Best for** | Production, quick testing | Development, learning, contributing |
 | **Image size** | ~500 MB | ~2 GB |
 
-**Recommendation**: Use pre-built packages for production and quick evaluation. Use source builds for development, debugging, and contributing to the project. See [source-build-guide.md](source-build-guide.md) for detailed source build instructions.
+**Recommendation**: Use pre-built packages for production and quick evaluation. Use source builds for development, debugging, and contributing to the project. See [source-build-guide.md](docs/source-build-guide.md) for detailed source build instructions.
 
 ---
 
@@ -255,8 +255,8 @@ OpenTenBase supports two deployment approaches:
 ### Docker Build (Recommended)
 
 ```bash
-git clone https://github.com/muzimu217/OpenTenBase-deb.git
-cd OpenTenBase-deb
+git clone https://github.com/muzimu217/OpenTenBase-Packages.git
+cd OpenTenBase-Packages
 
 # Build for all distributions
 ./scripts/build-multi.sh --all
@@ -287,17 +287,31 @@ sudo apt install -y debhelper-compat bison flex perl libreadline-dev \
 ## Directory Structure
 
 ```
-OpenTenBase-deb/
-├── .github/workflows/       # CI/CD pipelines
-├── config/                  # Default configuration templates
+OpenTenBase-Packages/
+├── README.md                # English documentation
+├── README_zh.md             # Chinese documentation
+├── CHANGELOG.md             # Release history
+├── TEST-PLAN.md             # Test matrix and results
+├── config/                  # Configuration templates
 ├── debian/                  # DEB packaging rules
 ├── rpm/                     # RPM packaging rules
 ├── docker/                  # Docker build environments
-├── scripts/                 # Build, release, signing scripts
-├── systemd/                 # systemd service units
+├── scripts/                 # Build, release, setup scripts
 ├── patches/                 # Source patches
 ├── test/                    # Automated tests
-└── docs/                    # Documentation
+│   └── advanced/            # Advanced test suites
+└── docs/                    # Guides and references
+    ├── QUICKSTART.md        # Quick start guide
+    ├── CONTRIBUTING.md      # Contributing guide
+    ├── source-build-guide.md # Build from source
+    ├── 01-quickstart.md     # Tutorial: quick start
+    ├── 02-basic-ops.md      # Tutorial: basic operations
+    ├── 03-architecture.md   # Tutorial: architecture
+    ├── 04-advanced.md       # Tutorial: advanced usage
+    ├── 05-troubleshoot.md   # Tutorial: troubleshooting
+    ├── 06-best-practices.md # Tutorial: best practices
+    ├── 07-deployment.md     # Tutorial: deployment
+    └── archive/             # Archived planning docs
 ```
 
 ---
@@ -306,15 +320,15 @@ OpenTenBase-deb/
 
 | Release | Date | Assets | Notes |
 |---------|------|--------|-------|
+| v5.0-p10 | 2026-06-02 | 156 | ARM64 native builds + Docker E2E + version switch fix |
+| v5.0-p9 | 2026-06-01 | 150 | Multi-version end-to-end verification on ARM64 |
 | v5.0-p8 | 2026-06-01 | 150 | Stress test (7/7), cross-machine deployment, dh_install fix |
+| v5.0-p4 | 2026-05-30 | 150 | Advanced test suite (31/31), all 14 distros |
 | v5.0-p3 | 2026-05-29 | 150 | Multi-version (5.0+2.6.0+2.5.0), 15 distros |
 | v5.0-p2 | 2026-05-28 | 50 | Fix lib/postgresql path, all 15 distros |
-| v5.0-multi16 | 2026-05-26 | 42 | Multi-distro release (DEB + RPM) |
-| v5.0-multi12 | 2026-05-25 | 31 | Multi-distro release (DEB + RPM) |
-| v5.0-multi9 | 2026-05-20 | 31 | Multi-distro release (DEB + RPM) |
 | v5.0 | 2026-05-18 | 7 | First release |
 
-See [GitHub Releases](https://github.com/muzimu217/OpenTenBase-deb/releases) for all releases.
+See [GitHub Releases](https://github.com/muzimu217/OpenTenBase-Packages/releases) for all releases.
 
 ---
 
@@ -433,7 +447,7 @@ Contributions are welcome — code, bug reports, and improvement suggestions!
 3. Commit and push your changes
 4. Create a Pull Request
 
-See [Contributing Guide](CONTRIBUTING.md) for details.
+See [Contributing Guide](docs/CONTRIBUTING.md) for details.
 
 ---
 
@@ -447,12 +461,12 @@ Same as OpenTenBase — [Apache License 2.0](https://www.apache.org/licenses/LIC
 
 | Resource | Link |
 |----------|------|
-| **This project** | https://github.com/muzimu217/OpenTenBase-deb |
+| **This project** | https://github.com/muzimu217/OpenTenBase-Packages |
 | **Upstream repo** | https://github.com/OpenTenBase/OpenTenBase |
 | **OpenTenBase docs** | https://github.com/OpenTenBase/OpenTenBase/wiki |
-| **Issue tracker** | [Issues](https://github.com/muzimu217/OpenTenBase-deb/issues) |
+| **Issue tracker** | [Issues](https://github.com/muzimu217/OpenTenBase-Packages/issues) |
 
 ---
 
 **Maintainer**: muzimu217
-**Last Updated**: 2026-06-01 (v5.0-p8, stress test + cross-machine deployment)
+**Last Updated**: 2026-06-02 (v5.0-p10, ARM64 native builds + full test matrix)

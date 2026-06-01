@@ -363,5 +363,5 @@ DROP TABLE test;                   # 清理
 ## 联系方式
 
 如有问题，请参考：
-- GitHub 仓库：https://github.com/muzimu217/OpenTenBase-deb
+- GitHub 仓库：https://github.com/muzimu217/OpenTenBase-Packages
 - 问题反馈：GitHub Issues

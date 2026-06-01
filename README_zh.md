@@ -36,7 +36,7 @@
 ### APT 仓库（Ubuntu / Debian）— 推荐
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/muzimu217/OpenTenBase-deb/main/scripts/setup-apt.sh | sudo bash
+curl -sSL https://raw.githubusercontent.com/muzimu217/OpenTenBase-Packages/main/scripts/setup-apt.sh | sudo bash
 sudo apt update
 sudo apt install opentenbase
 ```
@@ -44,14 +44,14 @@ sudo apt install opentenbase
 ### YUM/DNF 仓库（RHEL / CentOS / Fedora）
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/muzimu217/OpenTenBase-deb/main/scripts/setup-rpm.sh | sudo bash
+curl -sSL https://raw.githubusercontent.com/muzimu217/OpenTenBase-Packages/main/scripts/setup-rpm.sh | sudo bash
 sudo dnf install opentenbase
 ```
 
 ### 一键部署（交互式）
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/muzimu217/OpenTenBase-deb/main/scripts/setup-cluster.sh | sudo bash
+curl -sSL https://raw.githubusercontent.com/muzimu217/OpenTenBase-Packages/main/scripts/setup-cluster.sh | sudo bash
 ```
 
 ---
@@ -126,7 +126,7 @@ opentenbase-ctl stop
 
 ```bash
 # 下载部署脚本
-curl -sLO https://raw.githubusercontent.com/muzimu217/OpenTenBase-deb/main/docker/test-docker.sh
+curl -sLO https://raw.githubusercontent.com/muzimu217/OpenTenBase-Packages/main/docker/test-docker.sh
 bash test-docker.sh
 
 # 启动集群
@@ -242,7 +242,7 @@ OpenTenBase 支持两种部署方式：
 | **适用场景** | 生产环境、快速测试 | 开发、学习、贡献 |
 | **镜像大小** | ~500 MB | ~2 GB |
 
-**建议**：生产环境和快速体验使用预编译包，开发调试和贡献代码使用源码编译。详见 [source-build-guide.md](source-build-guide.md)。
+**建议**：生产环境和快速体验使用预编译包，开发调试和贡献代码使用源码编译。详见 [source-build-guide.md](docs/source-build-guide.md)。
 
 ---
 
@@ -251,8 +251,8 @@ OpenTenBase 支持两种部署方式：
 ### 使用 Docker 构建（推荐）
 
 ```bash
-git clone https://github.com/muzimu217/OpenTenBase-deb.git
-cd OpenTenBase-deb
+git clone https://github.com/muzimu217/OpenTenBase-Packages.git
+cd OpenTenBase-Packages
 
 # 构建所有发行版
 ./scripts/build-multi.sh --all
@@ -283,17 +283,31 @@ sudo apt install -y debhelper-compat bison flex perl libreadline-dev \
 ## 目录结构
 
 ```
-OpenTenBase-deb/
-├── .github/workflows/       # CI/CD 流水线
-├── config/                  # 默认配置模板
+OpenTenBase-Packages/
+├── README.md                # 英文文档
+├── README_zh.md             # 中文文档
+├── CHANGELOG.md             # 发布历史
+├── TEST-PLAN.md             # 测试矩阵与结果
+├── config/                  # 配置模板
 ├── debian/                  # DEB 打包规则
 ├── rpm/                     # RPM 打包规则
 ├── docker/                  # Docker 构建环境
-├── scripts/                 # 构建、发布、签名脚本
-├── systemd/                 # systemd 服务单元
+├── scripts/                 # 构建、发布、安装脚本
 ├── patches/                 # 源码补丁
 ├── test/                    # 自动化测试
-└── docs/                    # 文档
+│   └── advanced/            # 高级测试套件
+└── docs/                    # 文档与教程
+    ├── QUICKSTART.md        # 快速开始指南
+    ├── CONTRIBUTING.md      # 贡献指南
+    ├── source-build-guide.md # 源码构建指南
+    ├── 01-quickstart.md     # 教程：快速开始
+    ├── 02-basic-ops.md      # 教程：基本操作
+    ├── 03-architecture.md   # 教程：架构
+    ├── 04-advanced.md       # 教程：高级用法
+    ├── 05-troubleshoot.md   # 教程：故障排除
+    ├── 06-best-practices.md # 教程：最佳实践
+    ├── 07-deployment.md     # 教程：部署
+    └── archive/             # 已归档的规划文档
 ```
 
 ---
@@ -302,15 +316,15 @@ OpenTenBase-deb/
 
 | 版本 | 日期 | 资产数 | 说明 |
 |------|------|--------|------|
+| v5.0-p10 | 2026-06-02 | 156 | ARM64 原生构建 + Docker E2E + 版本切换修复 |
+| v5.0-p9 | 2026-06-01 | 150 | 多版本端到端验证（ARM64 实机） |
 | v5.0-p8 | 2026-06-01 | 150 | 压力测试（7/7）、跨机器部署、dh_install 修复 |
+| v5.0-p4 | 2026-05-30 | 150 | 高级测试套件（31/31），14 个发行版 |
 | v5.0-p3 | 2026-05-29 | 150 | 多版本（5.0+2.6.0+2.5.0），15 个发行版 |
 | v5.0-p2 | 2026-05-28 | 50 | 修复 lib/postgresql 路径，覆盖 15 个发行版 |
-| v5.0-multi16 | 2026-05-26 | 42 | 多发行版发布（DEB + RPM） |
-| v5.0-multi12 | 2026-05-25 | 31 | 多发行版发布（DEB + RPM） |
-| v5.0-multi9 | 2026-05-20 | 31 | 多发行版发布（DEB + RPM） |
 | v5.0 | 2026-05-18 | 7 | 首次发布 |
 
-详见 [GitHub Releases](https://github.com/muzimu217/OpenTenBase-deb/releases)。
+详见 [GitHub Releases](https://github.com/muzimu217/OpenTenBase-Packages/releases)。
 
 ---
 
@@ -427,7 +441,7 @@ gh workflow run stress-test.yml
 3. 提交更改并推送
 4. 创建 Pull Request
 
-详见 [贡献指南](CONTRIBUTING.md)。
+详见 [贡献指南](docs/CONTRIBUTING.md)。
 
 ---
 
@@ -441,12 +455,12 @@ gh workflow run stress-test.yml
 
 | 资源 | 链接 |
 |------|------|
-| **本项目** | https://github.com/muzimu217/OpenTenBase-deb |
+| **本项目** | https://github.com/muzimu217/OpenTenBase-Packages |
 | **上游仓库** | https://github.com/OpenTenBase/OpenTenBase |
 | **OpenTenBase 文档** | https://github.com/OpenTenBase/OpenTenBase/wiki |
-| **问题反馈** | [Issues](https://github.com/muzimu217/OpenTenBase-deb/issues) |
+| **问题反馈** | [Issues](https://github.com/muzimu217/OpenTenBase-Packages/issues) |
 
 ---
 
 **维护者**：muzimu217
-**最后更新**：2026-06-01（v5.0-p8，压力测试 + 跨机器部署）
+**最后更新**：2026-06-02（v5.0-p10，ARM64 原生构建 + 完整测试矩阵）
