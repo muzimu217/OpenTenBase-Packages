@@ -6,6 +6,27 @@ Format based on [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [v5.0-p10] — 2026-06-02
+
+Docker container E2E testing on multiple distros (aarch64).
+
+### Added
+- Docker container E2E test suite (`test/docker-e2e-test.sh`)
+  - Tests package installation + init/start/SQL/stop in isolated containers
+  - Rocky Linux 9 (aarch64): all tests passed
+  - openEuler 24.03 (aarch64): all tests passed
+  - Ubuntu 22.04 (aarch64): skipped (OpenSSL 1.1 binary compatibility)
+- Test results: `test/docker-e2e-results.md`
+- Docker installed on DevEnvVM via static binary (Huawei mirror)
+
+### Dependencies Documented
+| Distro | Required Packages |
+|--------|------------------|
+| Rocky Linux 9 | `sudo`, `which`, `shadow-utils`, `procps-ng` |
+| openEuler 24.03 | `sudo`, `which`, `shadow-utils`, `procps-ng`, `util-linux-user` |
+
+---
+
 ## [v5.0-p9] — 2026-06-01
 
 Multi-version end-to-end verification on real ARM64 hardware.
