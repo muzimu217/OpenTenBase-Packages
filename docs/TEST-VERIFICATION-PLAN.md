@@ -1,7 +1,7 @@
 # OpenTenBase 全面测试验证计划
 
 > 创建时间：2026-05-30
-> 版本：v5.0-p13
+> 版本：v5.0-p14
 > 状态：执行中
 
 ---
@@ -68,7 +68,8 @@
 | 数据类型 | 7 | int, text, jsonb, timestamp, array | ✅ |
 | 性能基准 | 6 | 批量 INSERT, JOIN, 索引 | ✅ |
 | 故障恢复 | 7 | 节点状态, 压力测试, 数据一致性 | ✅ |
-| **总计** | **31** | | ✅ |
+| 压力测试 | 7 | 100 行 INSERT, UPDATE, DELETE, 聚合 | ✅ |
+| **总计** | **38** | | ✅ |
 
 ### 2.4 手动测试（服务器实测）
 
@@ -126,6 +127,7 @@
 | build-multi.yml | 26688996831 | ✅ 7/7 DEB | 全部成功 |
 | build-rpm.yml | 26721059489 | ✅ 25/25 x86_64 + 3/3 arm64 | 全部成功（含 Rocky/Alma ARM64） |
 | test-all.yml | 26716213953 | ✅ 22/22 jobs | v5.0 + v2.6.0 + v2.5.0 全部通过 |
+| stress-test.yml | 26740585786 | ✅ 7/7 压力测试 | 全部成功 |
 | docker-publish.yml | 26689388947 | ✅ 成功 | GHCR 发布成功 |
 
 ### 4.2 手动测试结果
@@ -161,6 +163,8 @@
 | v2.6.0/v2.5.0 未在 CI 测试 | ✅ 已修复 | test-all.yml 多版本矩阵（v5.0 + v2.6.0 + v2.5.0） |
 | APT/RPM 仓库不索引 v2.6.0/v2.5.0 | ✅ 已修复 | APT component 选择器（main/v2.6/v2.5）+ RPM createrepo_c 原生支持 |
 | FORWARD 参数导致 v2.6.0/v2.5.0 节点注册失败 | ✅ 已修复 | CREATE NODE 的 FORWARD 参数仅 v5.0 有效，条件化处理 |
+| dh_install 缺失文件 (Ubuntu 20.04/Debian 11) | ✅ 已修复 | Make 变量展开 bug — `$E` 被解释为 Make 变量，改用 sed 删除 .install 文件中的匹配行 |
+| generate_series 批量 INSERT 极慢 | ⚠️ 已知限制 | 分布式表上 1000 行需 19 分钟，使用单行 INSERT 循环替代 |
 | hdspace GitHub 下载慢 | ⚠️ 已知限制 | ~20KB/s，9.5MB RPM 需 ~8 分钟 |
 | SSH 隧道端口映射 | ✅ 已修复 | 使用 --ports=56876:22 格式明确指定本地:远程端口映射 |
 
@@ -212,6 +216,12 @@
 ./test/advanced/test_performance.sh
 ./test/advanced/test_failover.sh
 
+# 压力测试（CI）
+gh workflow run stress-test.yml
+
+# 跨机器部署测试
+./test/cross-machine-test.sh
+
 # 触发 CI 测试
 gh workflow run test-all.yml
 ```
@@ -238,6 +248,6 @@ psql -h 127.0.0.1 -p 5432 -U opentenbase -d postgres -c "
 
 ---
 
-**计划版本**: 1.1
-**最后更新**: 2026-06-02
+**计划版本**: 1.2
+**最后更新**: 2026-06-01
 **维护者**: muzimu217

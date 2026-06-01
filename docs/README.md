@@ -304,6 +304,7 @@ OpenTenBase-deb/
 
 | Release | Date | Assets | Notes |
 |---------|------|--------|-------|
+| v5.0-p8 | 2026-06-01 | 150 | Stress test (7/7), cross-machine deployment, dh_install fix |
 | v5.0-p3 | 2026-05-29 | 150 | Multi-version (5.0+2.6.0+2.5.0), 15 distros |
 | v5.0-p2 | 2026-05-28 | 50 | Fix lib/postgresql path, all 15 distros |
 | v5.0-multi16 | 2026-05-26 | 42 | Multi-distro release (DEB + RPM) |
@@ -381,6 +382,36 @@ See [GitHub Releases](https://github.com/muzimu217/OpenTenBase-deb/releases) for
 
 ---
 
+## Testing
+
+All 15 distros pass CI verification (install + cluster + SQL + advanced tests).
+
+### Test Suites (38 tests total)
+
+| Suite | Tests | Content |
+|-------|-------|---------|
+| Basic SQL | 1 | CREATE TABLE, INSERT, SELECT |
+| Transactions | 6 | COMMIT/ROLLBACK, isolation, SAVEPOINT |
+| Connection Pool | 6 | Concurrent connections, pool reload |
+| Data Types | 7 | int, text, jsonb, timestamp, array |
+| Performance | 6 | Bulk INSERT, JOIN, index effectiveness |
+| Failover | 7 | Cluster health, stress R/W, data consistency |
+| Stress Test | 7 | 100-row INSERT, batch UPDATE/DELETE, aggregation |
+
+### Cross-Machine Deployment
+
+Verified on real hardware: devenv (ARM64, GTM+Coordinator) + 47.108 (x86_64, Datanode) connected via SSH reverse tunnel.
+
+```bash
+# Run cross-machine test
+./test/cross-machine-test.sh
+
+# Trigger stress test in CI
+gh workflow run stress-test.yml
+```
+
+---
+
 ## Known Limitations
 
 | Limitation | Description |
@@ -420,4 +451,4 @@ Same as OpenTenBase — [Apache License 2.0](https://www.apache.org/licenses/LIC
 ---
 
 **Maintainer**: muzimu217
-**Last Updated**: 2026-05-31 (v5.0-p3, ARM64 verified)
+**Last Updated**: 2026-06-01 (v5.0-p8, stress test + cross-machine deployment)

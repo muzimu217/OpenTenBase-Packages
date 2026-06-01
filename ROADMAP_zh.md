@@ -639,13 +639,23 @@ main "$@"
 
 ### 已完成（Phase 3 - ARM64 CI）✅
 
-- [x] **ARM64 RPM CI 矩阵** — QEMU 模拟，GitHub Actions 自动构建
-  - openEuler 22.03 aarch64: 构建成功，产物 9.3MB
+- [x] **ARM64 RPM CI 矩阵** — 原生 ARM64 runner (ubuntu-24.04-arm)
+  - openEuler 22.03、Rocky 9、AlmaLinux 9 aarch64 构建
   - x86_64 + aarch64 双架构 CI 矩阵
+  - 无需 QEMU 模拟 — 原生 runner 更快更可靠
 
-### 待开始 ⏳
+### 已完成（Phase 3 - 跨机器部署 + 压力测试）✅
 
-- [ ] **跨机器多节点部署** — 当前仅支持单机
+- [x] **跨机器多节点部署** — devenv (ARM64 GTM+Coord) + 47.108 (x86_64 DN)
+  - SSH 隧道实现 NAT 穿透（反向隧道用于 GTM/Coord，本地转发用于 DN）
+  - DISTRIBUTE BY SHARD CRUD 操作跨机器验证通过
+  - 数据本地性在远程 Datanode 上确认
+  - 测试脚本：`test/cross-machine-test.sh`
+
+- [x] **压力测试工作流** — `.github/workflows/stress-test.yml`
+  - 7/7 测试通过：建表、100 行 INSERT、数据一致性、UPDATE、DELETE、聚合、SELECT
+  - 内联集群搭建（GTM + Coordinator + Datanode）含完整节点注册
+  - 单行 INSERT（generate_series 批量 INSERT 在 CI 分布式表上太慢）
 
 ---
 
@@ -683,6 +693,6 @@ main "$@"
 
 ---
 
-**文档版本**: 2.0
-**最后更新**: 2026-05-30
+**文档版本**: 3.0
+**最后更新**: 2026-06-01
 **维护者**: muzimu217

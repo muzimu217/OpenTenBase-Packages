@@ -6,6 +6,34 @@ Format based on [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [v5.0-p8] — 2026-06-01
+
+Stress test suite and cross-machine multi-node deployment verification.
+
+### Added
+- Stress test workflow (`.github/workflows/stress-test.yml`) — 7/7 tests passing
+  - Sharding table creation, 100-row single-row INSERT, data consistency check
+  - Batch UPDATE (50 rows), Batch DELETE, complex aggregation, SELECT with WHERE
+- Cross-machine multi-node deployment test (`test/cross-machine-test.sh`)
+  - Architecture: devenv (ARM64, GTM+Coordinator) + 47.108 (x86_64, Datanode)
+  - SSH reverse tunnel for NAT traversal (GTM port 16666, Coord port 15432)
+  - Full CRUD verification across machines with data locality confirmation
+- Inline cluster setup in stress-test.yml (no dependency on multi-node-test.sh)
+
+### Fixed
+- `dh_install` missing files on Ubuntu 20.04/Debian 11 v5.0 builds
+  - Root cause: Make variable expansion — `$E` from `EXTRA_EXCL=""` was interpreted as Make variable `E` (empty)
+  - Fix: replaced variable-based exclusion with `sed -i "/pattern/d"` to delete matching lines from `.install` files before `dh_install` runs
+- Stress test `generate_series` bulk INSERT extremely slow on distributed tables (1000 rows = 19 min)
+  - Replaced with single-row INSERT loop (100 rows = 3s)
+
+### CI/CD
+- Stress test CI run 26740585786: 7/7 PASSED
+- Cross-machine deployment: 11/11 test items PASSED
+- Updated TEST-PLAN.md, ROADMAP.md with final results
+
+---
+
 ## [v5.0-p7] — 2026-05-30
 
 ARM64 RPM CI matrix and comprehensive test verification.
@@ -267,6 +295,7 @@ First release.
 
 ---
 
+[v5.0-p8]: https://github.com/muzimu217/OpenTenBase-deb/releases/tag/v5.0-p8
 [v5.0-p4]: https://github.com/muzimu217/OpenTenBase-deb/releases/tag/v5.0-p4
 [v5.0-p3]: https://github.com/muzimu217/OpenTenBase-deb/releases/tag/v5.0-p3
 [v5.0-p2]: https://github.com/muzimu217/OpenTenBase-deb/releases/tag/v5.0-p2

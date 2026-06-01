@@ -639,13 +639,23 @@ This is the **standard route for official packaging of open source projects**, a
 
 ### Completed (Phase 3 - ARM64 CI) ✅
 
-- [x] **ARM64 RPM CI matrix** — QEMU emulation via GitHub Actions
-  - openEuler 22.03 aarch64: successfully built and uploaded (9.3MB)
+- [x] **ARM64 RPM CI matrix** — native ARM64 runners (ubuntu-24.04-arm)
+  - openEuler 22.03, Rocky 9, AlmaLinux 9 aarch64 builds
   - x86_64 + aarch64 dual architecture CI matrix
+  - No QEMU emulation needed — native runners are faster and more reliable
 
-### Pending ⏳
+### Completed (Phase 3 - Cross-Machine + Stress Test) ✅
 
-- [ ] **Cross-machine multi-node deployment** — currently single-machine only
+- [x] **Cross-machine multi-node deployment** — devenv (ARM64 GTM+Coord) + 47.108 (x86_64 DN)
+  - SSH tunnel for NAT traversal (reverse tunnel for GTM/Coord, local forward for DN)
+  - DISTRIBUTE BY SHARD CRUD operations verified across machines
+  - Data locality confirmed on remote Datanode
+  - Test script: `test/cross-machine-test.sh`
+
+- [x] **Stress test workflow** — `.github/workflows/stress-test.yml`
+  - 7/7 tests passed: create table, 100 INSERTs, data consistency, UPDATE, DELETE, aggregation, SELECT
+  - Inline cluster setup (GTM + Coordinator + Datanode) with proper node registration
+  - Single-row INSERTs (bulk INSERT via generate_series is too slow on distributed tables in CI)
 
 ---
 
@@ -683,6 +693,6 @@ This is the **standard route for official packaging of open source projects**, a
 
 ---
 
-**Document Version**: 2.0
-**Last Updated**: 2026-05-30
+**Document Version**: 3.0
+**Last Updated**: 2026-06-01
 **Maintainer**: muzimu217

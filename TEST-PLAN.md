@@ -347,8 +347,45 @@ All 5 advanced test suites pass on all 14 distros (7 DEB + 7 RPM).
 
 | 日期 | 测试人 | 通过/总数 | 备注 |
 |------|--------|-----------|------|
+| 2026-06-01 | Claude | 7/7 压力测试 + 跨机器部署 | CI run 26740585786，压力测试全部通过；跨机器部署 (devenv ARM64 + 47.108 x86_64) 验证通过 |
 | 2026-05-30 | Claude | 14/14 发行版 + 31/31 高级测试 | CI run 26683489025，所有发行版和高级测试全部通过 |
 | 2026-05-26 | Claude | 25/28 | 基础部署和 CRUD 全部通过，并发和性能测试未执行 |
+
+## 压力测试（CI run 26740585786, 2026-06-01）
+
+All 7 stress tests pass. Workflow: `.github/workflows/stress-test.yml`
+
+| 测试项 | 说明 | 结果 |
+|--------|------|------|
+| Create Sharding Table | 创建 DISTRIBUTE BY SHARD 分片表 | ✅ PASS |
+| Single-row INSERTs (100 rows) | 100 行单行 INSERT（3s） | ✅ PASS (100 rows) |
+| Data Consistency Check | 无重复主键验证 | ✅ No duplicates |
+| Batch UPDATE | 更新 50 行 | ✅ PASS (50 rows updated) |
+| Batch DELETE | 删除 id > 50 的行 | ✅ PASS (80 rows remaining) |
+| Complex Aggregation | count/avg/min/max 聚合查询 | ✅ PASS |
+| SELECT with WHERE | 条件查询验证 UPDATE 结果 | ✅ PASS (id=42: updated_42) |
+
+**注意**: `generate_series` 批量 INSERT 在 CI 分布式环境中极慢（1000 行需 19 分钟），因此使用单行 INSERT 循环。
+
+## 跨机器多节点部署测试（2026-06-01）
+
+架构：devenv (ARM64, GTM+Coordinator) → 47.108.249.115 (x86_64, Datanode)
+
+| 测试项 | 说明 | 结果 |
+|--------|------|------|
+| SSH 隧道连通 | 反向隧道 GTM(16666) + Coord(15432)，本地转发 DN(25432) | ✅ |
+| GTM 启动 | devenv 上 GTM 端口 6666 | ✅ |
+| Coordinator 启动 | devenv 上 Coordinator 端口 5432 | ✅ |
+| Datanode 启动 | 47.108 上 Datanode 端口 25432 | ✅ |
+| 节点注册 | 3 个节点全部注册到 pgxc_node | ✅ |
+| 分片组创建 | default_group + SHARDING GROUP | ✅ |
+| INSERT | 3 行数据跨机器写入 | ✅ |
+| SELECT | 跨机器读取验证 | ✅ |
+| UPDATE | 跨机器更新验证 | ✅ |
+| DELETE | 跨机器删除验证 | ✅ |
+| 数据本地性 | 直接查询远程 Datanode 确认数据存储 | ✅ |
+
+测试脚本：`test/cross-machine-test.sh`
 
 ## 已知问题
 

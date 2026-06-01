@@ -302,6 +302,7 @@ OpenTenBase-deb/
 
 | 版本 | 日期 | 资产数 | 说明 |
 |------|------|--------|------|
+| v5.0-p8 | 2026-06-01 | 150 | 压力测试（7/7）、跨机器部署、dh_install 修复 |
 | v5.0-p3 | 2026-05-29 | 150 | 多版本（5.0+2.6.0+2.5.0），15 个发行版 |
 | v5.0-p2 | 2026-05-28 | 50 | 修复 lib/postgresql 路径，覆盖 15 个发行版 |
 | v5.0-multi16 | 2026-05-26 | 42 | 多发行版发布（DEB + RPM） |
@@ -379,6 +380,36 @@ OpenTenBase-deb/
 
 ---
 
+## 测试
+
+所有 15 个发行版均通过 CI 验证（安装 + 集群 + SQL + 高级测试）。
+
+### 测试套件（共 38 项测试）
+
+| 套件 | 测试数 | 内容 |
+|------|--------|------|
+| 基础 SQL | 1 | CREATE TABLE, INSERT, SELECT |
+| 事务测试 | 6 | COMMIT/ROLLBACK、隔离级别、SAVEPOINT |
+| 连接池 | 6 | 并发连接、池耗尽、重载 |
+| 数据类型 | 7 | int, text, jsonb, timestamp, array |
+| 性能基准 | 6 | 批量 INSERT、JOIN、索引效果 |
+| 故障恢复 | 7 | 集群健康、压力读写、数据一致性 |
+| 压力测试 | 7 | 100 行 INSERT、批量 UPDATE/DELETE、聚合查询 |
+
+### 跨机器部署
+
+已在真实硬件上验证：devenv（ARM64, GTM+Coordinator）+ 47.108（x86_64, Datanode），通过 SSH 反向隧道连接。
+
+```bash
+# 运行跨机器测试
+./test/cross-machine-test.sh
+
+# 在 CI 中触发压力测试
+gh workflow run stress-test.yml
+```
+
+---
+
 ## 已知限制
 
 | 限制 | 说明 |
@@ -418,4 +449,4 @@ OpenTenBase-deb/
 ---
 
 **维护者**：muzimu217
-**最后更新**：2026-05-31（ARM64 验证通过）
+**最后更新**：2026-06-01（v5.0-p8，压力测试 + 跨机器部署）
