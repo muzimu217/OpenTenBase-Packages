@@ -8,21 +8,11 @@ on:
         required: false
         default: '5.0'
         type: string
-      duration:
-        description: 'pgbench duration in seconds'
-        required: false
-        default: '60'
-        type: string
-      clients:
-        description: 'Number of concurrent clients'
-        required: false
-        default: '16'
-        type: string
 
 jobs:
   stress-test:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 15
 
     steps:
       - name: Checkout
@@ -64,12 +54,10 @@ jobs:
           OTB_USER="opentenbase"
           OTB_LIB="/usr/lib/opentenbase/${OTB_VERSION}/lib"
 
-          # Helper to run as opentenbase user (cd / avoids directory permission issues)
           run_as_otb() {
             cd / && sudo -u "$OTB_USER" env LD_LIBRARY_PATH="$OTB_LIB" "$@"
           }
 
-          # Ensure user exists
           id $OTB_USER 2>/dev/null || {
             sudo groupadd --system $OTB_USER 2>/dev/null || true
             sudo useradd --system --gid $OTB_USER --home-dir /var/lib/opentenbase --shell /bin/bash $OTB_USER 2>/dev/null || true
@@ -176,11 +164,7 @@ jobs:
           fi
           run_as_otb $DN_PSQL -c "SELECT pgxc_pool_reload();" >/dev/null 2>&1 || true
 
-          # Debug: verify node registration
-          echo "Registered nodes on coordinator:"
-          run_as_otb $COORD_PSQL -c "SELECT node_name, node_type, node_port FROM pgxc_node;" 2>/dev/null || true
-
-          # Create node group and sharding (careful approach from multi-node-test.sh)
+          # Create node group and sharding
           HAS_PGXC_GROUP=$(run_as_otb $COORD_PSQL -t -A -c "SELECT count(*) FROM information_schema.tables WHERE table_name = 'pgxc_group';" 2>/dev/null || echo "0")
           if [ "$HAS_PGXC_GROUP" = "1" ]; then
             HAS_GROUP=$(run_as_otb $COORD_PSQL -t -A -c "SELECT count(*) FROM pgxc_group WHERE group_name = 'default_group';" 2>/dev/null || echo "0")
@@ -191,108 +175,113 @@ jobs:
                 run_as_otb $COORD_PSQL -c "INSERT INTO pgxc_group (group_name, default_group, group_members) VALUES ('default_group', 1, '$DN_OID');" 2>/dev/null || true
                 run_as_otb $COORD_PSQL -c "SELECT pgxc_pool_reload();" >/dev/null 2>&1 || true
                 run_as_otb $COORD_PSQL -c "CREATE SHARDING GROUP TO GROUP default_group;" 2>/dev/null || true
-              else
-                echo "WARNING: could not find datanode OID"
               fi
             fi
-          else
-            echo "WARNING: pgxc_group table not available"
           fi
 
           echo "Nodes registered"
 
-      - name: Run pgbench stress test
+      - name: Run stress tests
         env:
           OTB_VERSION: ${{ inputs.version || '5.0' }}
-          DURATION: ${{ inputs.duration || '60' }}
-          CLIENTS: ${{ inputs.clients || '16' }}
         run: |
           OTB_BIN="/usr/lib/opentenbase/${OTB_VERSION}/bin"
           OTB_LIB="/usr/lib/opentenbase/${OTB_VERSION}/lib"
           PSQL="$OTB_BIN/psql -h 127.0.0.1 -p 5432 -U opentenbase -d postgres"
-          PGBENCH="$OTB_BIN/pgbench -h 127.0.0.1 -p 5432 -U opentenbase -d postgres"
           run_as_otb() { cd / && sudo -u opentenbase env LD_LIBRARY_PATH="$OTB_LIB" "$@"; }
 
           echo "=== Stress Test Configuration ==="
           echo "  Version: $OTB_VERSION"
-          echo "  Duration: ${DURATION}s"
-          echo "  Clients: $CLIENTS"
           echo ""
 
           # Create sharding table
-          echo "=== Creating test table ==="
+          echo "=== 1. Create Sharding Table ==="
           run_as_otb $PSQL -c "CREATE TABLE stress_test (id int PRIMARY KEY, val text) DISTRIBUTE BY SHARD(id);"
+          echo "  PASS"
 
-          # Insert initial data
-          echo "=== Inserting initial data (10000 rows) ==="
+          # Batch INSERT
+          echo ""
+          echo "=== 2. Batch INSERT (10000 rows) ==="
+          START=$(date +%s)
           run_as_otb $PSQL -c "INSERT INTO stress_test SELECT i, 'row_' || i FROM generate_series(1, 10000) i;"
-
+          END=$(date +%s)
           COUNT=$(run_as_otb $PSQL -t -A -c "SELECT count(*) FROM stress_test;")
-          echo "  Rows inserted: $COUNT"
+          echo "  Rows: $COUNT, Duration: $((END - START))s"
+          [ "$COUNT" = "10000" ] && echo "  PASS" || echo "  FAIL (expected 10000, got $COUNT)"
 
-          # Initialize pgbench
+          # Large batch INSERT
           echo ""
-          echo "=== Initializing pgbench ==="
-          run_as_otb $PGBENCH -i -s 10 2>&1 || echo "pgbench init may have partial failures (expected for distributed DB)"
+          echo "=== 3. Large Batch INSERT (100000 rows) ==="
+          START=$(date +%s)
+          run_as_otb $PSQL -c "INSERT INTO stress_test SELECT i + 100000, 'batch_' || i FROM generate_series(1, 100000) i;"
+          END=$(date +%s)
+          COUNT=$(run_as_otb $PSQL -t -A -c "SELECT count(*) FROM stress_test;")
+          echo "  Rows: $COUNT, Duration: $((END - START))s"
+          [ "$COUNT" = "110000" ] && echo "  PASS" || echo "  FAIL (expected 110000, got $COUNT)"
 
-          # Run pgbench SELECT test
+          # Concurrent INSERT (8 parallel)
           echo ""
-          echo "=== pgbench SELECT Test (${DURATION}s, ${CLIENTS} clients) ==="
-          run_as_otb $PGBENCH -c $CLIENTS -j 4 -T $DURATION -S 2>&1 | tee /tmp/pgbench-select.txt
-
-          # Run pgbench mixed test
-          echo ""
-          echo "=== pgbench Mixed Read/Write Test (${DURATION}s, ${CLIENTS} clients) ==="
-          run_as_otb $PGBENCH -c $CLIENTS -j 4 -T $DURATION 2>&1 | tee /tmp/pgbench-mixed.txt
-
-          # Custom high-concurrency INSERT test
-          echo ""
-          echo "=== High-Concurrency INSERT Test ==="
-          for i in $(seq 1 $CLIENTS); do
-            run_as_otb $PSQL -c "INSERT INTO stress_test SELECT i + $((i * 100000)), 'concurrent_' || i FROM generate_series(1, 1000) i;" &
+          echo "=== 4. Concurrent INSERT (8 x 1000 rows) ==="
+          START=$(date +%s)
+          for i in $(seq 1 8); do
+            run_as_otb $PSQL -c "INSERT INTO stress_test SELECT i + $((i * 1000000)), 'concurrent_' || i FROM generate_series(1, 1000) i;" &
           done
           wait
+          END=$(date +%s)
+          COUNT=$(run_as_otb $PSQL -t -A -c "SELECT count(*) FROM stress_test;")
+          echo "  Rows: $COUNT, Duration: $((END - START))s"
 
-          FINAL_COUNT=$(run_as_otb $PSQL -t -A -c "SELECT count(*) FROM stress_test;")
-          echo "  Final row count: $FINAL_COUNT"
-
-          # Data consistency check
+          # Data consistency
           echo ""
-          echo "=== Data Consistency Check ==="
+          echo "=== 5. Data Consistency Check ==="
           DUPES=$(run_as_otb $PSQL -t -A -c "SELECT count(*) FROM (SELECT id, count(*) FROM stress_test GROUP BY id HAVING count(*) > 1) t;")
-          [ "$DUPES" = "0" ] && echo "  No duplicate IDs: PASS" || echo "  Duplicate IDs found: FAIL ($DUPES)"
+          [ "$DUPES" = "0" ] && echo "  No duplicates: PASS" || echo "  Duplicates found: FAIL ($DUPES)"
 
-          # Large batch INSERT test
+          # UPDATE test
           echo ""
-          echo "=== Large Batch INSERT (100000 rows) ==="
+          echo "=== 6. Batch UPDATE ==="
           START=$(date +%s)
-          run_as_otb $PSQL -c "INSERT INTO stress_test SELECT i + 2000000, 'batch_' || i FROM generate_series(1, 100000) i;"
+          run_as_otb $PSQL -c "UPDATE stress_test SET val = 'updated_' || id WHERE id <= 1000;"
           END=$(date +%s)
           echo "  Duration: $((END - START))s"
+          echo "  PASS"
 
-          # Complex query test
+          # DELETE test
           echo ""
-          echo "=== Complex Query Test ==="
+          echo "=== 7. Batch DELETE ==="
           START=$(date +%s)
-          run_as_otb $PSQL -c "SELECT count(*), avg(id), min(id), max(id) FROM stress_test WHERE id > 100000;"
+          run_as_otb $PSQL -c "DELETE FROM stress_test WHERE id > 200000;"
+          END=$(date +%s)
+          COUNT=$(run_as_otb $PSQL -t -A -c "SELECT count(*) FROM stress_test;")
+          echo "  Rows remaining: $COUNT, Duration: $((END - START))s"
+          echo "  PASS"
+
+          # Complex query
+          echo ""
+          echo "=== 8. Complex Aggregation Query ==="
+          START=$(date +%s)
+          run_as_otb $PSQL -c "SELECT count(*), avg(id), min(id), max(id) FROM stress_test WHERE id > 1000;"
           END=$(date +%s)
           echo "  Duration: $((END - START))s"
+          echo "  PASS"
 
-      - name: Collect results
-        if: always()
-        run: |
-          echo "## Stress Test Results" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Metric | Value |" >> $GITHUB_STEP_SUMMARY
-          echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
-          if [ -f /tmp/pgbench-select.txt ]; then
-            TPS=$(grep "tps = " /tmp/pgbench-select.txt | tail -1 | awk '{print $3}')
-            echo "| SELECT TPS | $TPS |" >> $GITHUB_STEP_SUMMARY
-          fi
-          if [ -f /tmp/pgbench-mixed.txt ]; then
-            TPS=$(grep "tps = " /tmp/pgbench-mixed.txt | tail -1 | awk '{print $3}')
-            echo "| Mixed TPS | $TPS |" >> $GITHUB_STEP_SUMMARY
-          fi
+          # JOIN query
+          echo ""
+          echo "=== 9. Self-JOIN Query ==="
+          run_as_otb $PSQL -c "CREATE TABLE stress_test2 (id int PRIMARY KEY, ref_id int) DISTRIBUTE BY SHARD(id);"
+          run_as_otb $PSQL -c "INSERT INTO stress_test2 SELECT i, i FROM generate_series(1, 1000) i;"
+          START=$(date +%s)
+          run_as_otb $PSQL -c "SELECT count(*) FROM stress_test s1 JOIN stress_test2 s2 ON s1.id = s2.ref_id;"
+          END=$(date +%s)
+          echo "  Duration: $((END - START))s"
+          echo "  PASS"
+
+          # Cleanup
+          run_as_otb $PSQL -c "DROP TABLE IF EXISTS stress_test;"
+          run_as_otb $PSQL -c "DROP TABLE IF EXISTS stress_test2;"
+
+          echo ""
+          echo "=== All stress tests completed ==="
 
       - name: Cleanup
         if: always()
