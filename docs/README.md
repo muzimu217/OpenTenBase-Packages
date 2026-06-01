@@ -123,6 +123,8 @@ opentenbase-ctl start
 opentenbase-ctl status
 
 # 4. Connect to database
+# DEB (Ubuntu/Debian): opentenbase-psql
+# RPM (RHEL/CentOS/Rocky/Fedora): psql
 opentenbase-psql -h 127.0.0.1 -p 5432 -U opentenbase -d template1
 
 # 5. Stop cluster
