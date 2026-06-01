@@ -120,18 +120,18 @@ jobs:
           sudo bash -c "echo 'host all all 0.0.0.0/0 trust' >> $OTB_HOME/dn1/pg_hba.conf"
 
           # Start GTM
-          sudo -u $OTB_USER env LD_LIBRARY_PATH="/usr/lib/opentenbase/${OTB_VERSION}/lib" \
-            $OTB_BIN/gtm -D $OTB_HOME/gtm > /var/log/opentenbase/gtm.log 2>&1 &
+          sudo bash -c "sudo -u $OTB_USER env LD_LIBRARY_PATH=/usr/lib/opentenbase/${OTB_VERSION}/lib \
+            $OTB_BIN/gtm -D $OTB_HOME/gtm > /var/log/opentenbase/gtm.log 2>&1 &"
           sleep 3
 
           # Start Datanode
-          sudo -u $OTB_USER env LD_LIBRARY_PATH="/usr/lib/opentenbase/${OTB_VERSION}/lib" \
-            $OTB_BIN/postgres --datanode -D $OTB_HOME/dn1 > /var/log/opentenbase/dn.log 2>&1 &
+          sudo bash -c "sudo -u $OTB_USER env LD_LIBRARY_PATH=/usr/lib/opentenbase/${OTB_VERSION}/lib \
+            $OTB_BIN/postgres --datanode -D $OTB_HOME/dn1 > /var/log/opentenbase/dn.log 2>&1 &"
           sleep 3
 
           # Start Coordinator
-          sudo -u $OTB_USER env LD_LIBRARY_PATH="/usr/lib/opentenbase/${OTB_VERSION}/lib" \
-            $OTB_BIN/postgres --coordinator -D $OTB_HOME/coord > /var/log/opentenbase/coord.log 2>&1 &
+          sudo bash -c "sudo -u $OTB_USER env LD_LIBRARY_PATH=/usr/lib/opentenbase/${OTB_VERSION}/lib \
+            $OTB_BIN/postgres --coordinator -D $OTB_HOME/coord > /var/log/opentenbase/coord.log 2>&1 &"
           sleep 3
 
           # Verify all processes are running
