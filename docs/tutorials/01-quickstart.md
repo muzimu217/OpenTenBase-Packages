@@ -88,7 +88,7 @@ Datanode: Running
 ### 连接数据库
 
 ```bash
-psql -h 127.0.0.1 -p 5432 -U opentenbase postgres
+opentenbase-psql -h 127.0.0.1 -p 5432 -U opentenbase postgres
 ```
 
 **预期输出：**

@@ -33,7 +33,7 @@ sudo opentenbase-ctl init
 sudo opentenbase-ctl start
 
 # 4. 验证
-psql -h 127.0.0.1 -p 5432 -U opentenbase -d template1 -c "SELECT version();"
+opentenbase-psql -h 127.0.0.1 -p 5432 -U opentenbase -d template1 -c "SELECT version();"
 ```
 
 ## 方式二：RPM 安装（RHEL / CentOS / Rocky / Alma / Fedora / openEuler）
@@ -50,7 +50,7 @@ sudo opentenbase-ctl init
 sudo opentenbase-ctl start
 
 # 4. 验证
-psql -h 127.0.0.1 -p 5432 -U opentenbase -d template1 -c "SELECT version();"
+opentenbase-psql -h 127.0.0.1 -p 5432 -U opentenbase -d template1 -c "SELECT version();"
 ```
 
 ## 方式三：Docker 部署
@@ -63,7 +63,7 @@ docker pull ghcr.io/muzimu217/opentenbase-runtime:v5.0-p6
 docker run -d --name opentenbase -p 5432:5432 \
   ghcr.io/muzimu217/opentenbase-runtime:v5.0-p6
 
-# 3. 连接
+# 3. 连接（容器内 psql 已在 PATH 中）
 psql -h 127.0.0.1 -p 5432 -U opentenbase -d postgres
 ```
 
@@ -76,6 +76,14 @@ docker compose up -d --build
 ```
 
 ---
+
+## 连接数据库
+
+安装后使用 `opentenbase-psql` 连接（不是系统自带的 `psql`）：
+
+```bash
+opentenbase-psql -h 127.0.0.1 -p 5432 -U opentenbase -d template1
+```
 
 ## 集群管理
 
@@ -91,7 +99,7 @@ sudo opentenbase-ctl restart   # 重启集群
 
 ```sql
 -- 连接到 Coordinator
-psql -h 127.0.0.1 -p 5432 -U opentenbase -d template1
+opentenbase-psql -h 127.0.0.1 -p 5432 -U opentenbase -d template1
 
 -- 创建分片表
 CREATE TABLE users (
@@ -158,7 +166,7 @@ ss -tlnp | grep -E '5432|6666|15432'
 # 检查集群状态
 sudo opentenbase-ctl status
 # 检查 pg_hba.conf
-cat /var/lib/opentenbase/5.0/data/coord/pg_hba.conf
+cat /var/lib/opentenbase/5.0/coord/pg_hba.conf
 ```
 
 ---
@@ -186,7 +194,7 @@ cat /var/lib/opentenbase/5.0/data/coord/pg_hba.conf
 curl -sSL https://raw.githubusercontent.com/muzimu217/OpenTenBase-deb/main/scripts/setup-apt.sh | sudo bash
 sudo apt update && sudo apt install -y opentenbase
 sudo opentenbase-ctl init && sudo opentenbase-ctl start
-psql -h 127.0.0.1 -p 5432 -U opentenbase -d template1 -c "SELECT version();"
+opentenbase-psql -h 127.0.0.1 -p 5432 -U opentenbase -d template1 -c "SELECT version();"
 ```
 
 ### RPM (RHEL / CentOS / Rocky / Fedora)
@@ -195,7 +203,7 @@ psql -h 127.0.0.1 -p 5432 -U opentenbase -d template1 -c "SELECT version();"
 curl -sSL https://raw.githubusercontent.com/muzimu217/OpenTenBase-deb/main/scripts/setup-rpm.sh | sudo bash
 sudo dnf install -y opentenbase
 sudo opentenbase-ctl init && sudo opentenbase-ctl start
-psql -h 127.0.0.1 -p 5432 -U opentenbase -d template1 -c "SELECT version();"
+opentenbase-psql -h 127.0.0.1 -p 5432 -U opentenbase -d template1 -c "SELECT version();"
 ```
 
 ### Docker
