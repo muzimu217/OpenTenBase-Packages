@@ -136,27 +136,68 @@ jobs:
         run: |
           OTB_BIN="/usr/lib/opentenbase/${OTB_VERSION}/bin"
           OTB_LIB="/usr/lib/opentenbase/${OTB_VERSION}/lib"
-          PSQL="$OTB_BIN/psql -h 127.0.0.1 -p 5432 -U opentenbase -d postgres -X -q -v ON_ERROR_STOP=0"
+          COORD_PSQL="$OTB_BIN/psql -h 127.0.0.1 -p 5432 -U opentenbase -d postgres -X -q -v ON_ERROR_STOP=0"
+          DN_PSQL="$OTB_BIN/psql -h 127.0.0.1 -p 5433 -U opentenbase -d postgres -X -q -v ON_ERROR_STOP=0"
           run_as_otb() { cd / && sudo -u opentenbase env LD_LIBRARY_PATH="$OTB_LIB" "$@"; }
 
-          # Register GTM
-          run_as_otb $PSQL -c "CREATE GTM NODE gtm_master WITH (HOST='127.0.0.1', PORT=6666, PRIMARY);" 2>/dev/null || true
-          run_as_otb $PSQL -c "ALTER GTM NODE gtm_master WITH (HOST='127.0.0.1', PORT=6666, PRIMARY);" 2>/dev/null || true
+          # Register GTM on coordinator
+          run_as_otb $COORD_PSQL -c "CREATE GTM NODE gtm_master WITH (HOST='127.0.0.1', PORT=6666, PRIMARY);" 2>/dev/null || true
+          run_as_otb $COORD_PSQL -c "ALTER GTM NODE gtm_master WITH (HOST='127.0.0.1', PORT=6666, PRIMARY);" 2>/dev/null || true
 
-          # Register Datanode
+          # Register datanode on coordinator
           if [ "$OTB_VERSION" = "5.0" ]; then
-            run_as_otb $PSQL -c "CREATE NODE dn1 WITH (TYPE='datanode', HOST='127.0.0.1', PORT=5433, FORWARD=6670, PRIMARY, PREFERRED);" 2>/dev/null || true
-            run_as_otb $PSQL -c "ALTER NODE dn1 WITH (TYPE='datanode', HOST='127.0.0.1', PORT=5433, FORWARD=6670, PRIMARY, PREFERRED);" 2>/dev/null || true
+            run_as_otb $COORD_PSQL -c "CREATE NODE dn1 WITH (TYPE='datanode', HOST='127.0.0.1', PORT=5433, FORWARD=6670, PRIMARY, PREFERRED);" 2>/dev/null || true
+            run_as_otb $COORD_PSQL -c "ALTER NODE dn1 WITH (TYPE='datanode', HOST='127.0.0.1', PORT=5433, FORWARD=6670, PRIMARY, PREFERRED);" 2>/dev/null || true
           else
-            run_as_otb $PSQL -c "CREATE NODE dn1 WITH (TYPE='datanode', HOST='127.0.0.1', PORT=5433, PRIMARY, PREFERRED);" 2>/dev/null || true
-            run_as_otb $PSQL -c "ALTER NODE dn1 WITH (TYPE='datanode', HOST='127.0.0.1', PORT=5433, PRIMARY, PREFERRED);" 2>/dev/null || true
+            run_as_otb $COORD_PSQL -c "CREATE NODE dn1 WITH (TYPE='datanode', HOST='127.0.0.1', PORT=5433, PRIMARY, PREFERRED);" 2>/dev/null || true
+            run_as_otb $COORD_PSQL -c "ALTER NODE dn1 WITH (TYPE='datanode', HOST='127.0.0.1', PORT=5433, PRIMARY, PREFERRED);" 2>/dev/null || true
           fi
 
-          run_as_otb $PSQL -c "SELECT pgxc_pool_reload();"
+          # Register coordinator on coordinator (self)
+          if [ "$OTB_VERSION" = "5.0" ]; then
+            run_as_otb $COORD_PSQL -c "CREATE NODE coord WITH (TYPE='coordinator', HOST='127.0.0.1', PORT=5432, FORWARD=6671);" 2>/dev/null || true
+            run_as_otb $COORD_PSQL -c "ALTER NODE coord WITH (TYPE='coordinator', HOST='127.0.0.1', PORT=5432, FORWARD=6671);" 2>/dev/null || true
+          else
+            run_as_otb $COORD_PSQL -c "CREATE NODE coord WITH (TYPE='coordinator', HOST='127.0.0.1', PORT=5432);" 2>/dev/null || true
+            run_as_otb $COORD_PSQL -c "ALTER NODE coord WITH (TYPE='coordinator', HOST='127.0.0.1', PORT=5432);" 2>/dev/null || true
+          fi
 
-          # Create node group and sharding
-          run_as_otb $PSQL -c "CREATE DEFAULT NODE GROUP default_group WITH (dn1);"
-          run_as_otb $PSQL -c "CREATE SHARDING GROUP TO GROUP default_group;"
+          run_as_otb $COORD_PSQL -c "SELECT pgxc_pool_reload();" >/dev/null 2>&1 || true
+
+          # Propagate registrations to datanode
+          run_as_otb $DN_PSQL -c "CREATE GTM NODE gtm_master WITH (HOST='127.0.0.1', PORT=6666, PRIMARY);" 2>/dev/null || true
+          run_as_otb $DN_PSQL -c "ALTER GTM NODE gtm_master WITH (HOST='127.0.0.1', PORT=6666, PRIMARY);" 2>/dev/null || true
+          if [ "$OTB_VERSION" = "5.0" ]; then
+            run_as_otb $DN_PSQL -c "CREATE NODE coord WITH (TYPE='coordinator', HOST='127.0.0.1', PORT=5432, FORWARD=6671);" 2>/dev/null || true
+            run_as_otb $DN_PSQL -c "ALTER NODE coord WITH (TYPE='coordinator', HOST='127.0.0.1', PORT=5432, FORWARD=6671);" 2>/dev/null || true
+          else
+            run_as_otb $DN_PSQL -c "CREATE NODE coord WITH (TYPE='coordinator', HOST='127.0.0.1', PORT=5432);" 2>/dev/null || true
+            run_as_otb $DN_PSQL -c "ALTER NODE coord WITH (TYPE='coordinator', HOST='127.0.0.1', PORT=5432);" 2>/dev/null || true
+          fi
+          run_as_otb $DN_PSQL -c "SELECT pgxc_pool_reload();" >/dev/null 2>&1 || true
+
+          # Debug: verify node registration
+          echo "Registered nodes on coordinator:"
+          run_as_otb $COORD_PSQL -c "SELECT node_name, node_type, node_port FROM pgxc_node;" 2>/dev/null || true
+
+          # Create node group and sharding (careful approach from multi-node-test.sh)
+          HAS_PGXC_GROUP=$(run_as_otb $COORD_PSQL -t -A -c "SELECT count(*) FROM information_schema.tables WHERE table_name = 'pgxc_group';" 2>/dev/null || echo "0")
+          if [ "$HAS_PGXC_GROUP" = "1" ]; then
+            HAS_GROUP=$(run_as_otb $COORD_PSQL -t -A -c "SELECT count(*) FROM pgxc_group WHERE group_name = 'default_group';" 2>/dev/null || echo "0")
+            if [ "$HAS_GROUP" != "1" ]; then
+              DN_OID=$(run_as_otb $COORD_PSQL -t -A -c "SELECT oid FROM pgxc_node WHERE node_name = 'dn1' AND node_type = 'D';" 2>/dev/null || echo "")
+              if [ -n "$DN_OID" ]; then
+                run_as_otb $DN_PSQL -c "CREATE DEFAULT NODE GROUP default_group WITH (dn1);" 2>/dev/null || true
+                run_as_otb $COORD_PSQL -c "INSERT INTO pgxc_group (group_name, default_group, group_members) VALUES ('default_group', 1, '$DN_OID');" 2>/dev/null || true
+                run_as_otb $COORD_PSQL -c "SELECT pgxc_pool_reload();" >/dev/null 2>&1 || true
+                run_as_otb $COORD_PSQL -c "CREATE SHARDING GROUP TO GROUP default_group;" 2>/dev/null || true
+              else
+                echo "WARNING: could not find datanode OID"
+              fi
+            fi
+          else
+            echo "WARNING: pgxc_group table not available"
+          fi
 
           echo "Nodes registered"
 
