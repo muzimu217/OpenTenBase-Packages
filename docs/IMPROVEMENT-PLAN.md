@@ -159,7 +159,7 @@ OpenTenBase-deb/
 ## 参考链接
 
 - 仓库地址：https://github.com/muzimu217/OpenTenBase-deb
-- 最新 Release：https://github.com/muzimu217/OpenTenBase-deb/releases/tag/v5.0-p8
+- 最新 Release：https://github.com/muzimu217/OpenTenBase-deb/releases/tag/v5.0-p9
 - 上游仓库：https://github.com/OpenTenBase/OpenTenBase
 
-**Update 2026-05-30:** APT/RPM repository fully operational via GitHub Pages. setup-apt.sh and setup-rpm.sh scripts available. GPG signing configured. CI run 26683489025: 14/14 distros + 31/31 advanced tests all passing.
+**Update 2026-06-01:** Multi-version end-to-end verification completed on real ARM64 hardware (DevEnvVM, HCE 2.0, 4vCPUs, 8GB). All three versions (v5.0, v2.6.0, v2.5.0) verified: init → start → SQL query → stop → switch. Fixed max_pool_size >= max_connections and forward_port version-conditional issues.
