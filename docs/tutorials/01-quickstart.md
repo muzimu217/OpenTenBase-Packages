@@ -2,34 +2,34 @@
 
 ## 环境要求
 
-| 资源 | 最小要求 | 推荐配置 |
-|------|---------|---------|
-| 操作系统 | Ubuntu 20.04 / Debian 11 | Ubuntu 24.04 / Debian 12 |
-| CPU | 2核 | 4核+ |
-| 内存 | 4GB | 8GB+ |
-| 磁盘 | 20GB | 50GB+ |
+| 资源 | 最低 | 推荐 |
+|------|------|------|
+| 操作系统 | Ubuntu 20.04+ / Debian 11+ / RHEL 8+ / Fedora 40+ | Ubuntu 24.04 / Debian 12 |
+| CPU | 1 核 | 2+ 核 |
+| 内存 | 3 GB | 4 GB+ |
+| 磁盘 | 2 GB | 10 GB+ |
 | 权限 | sudo 权限 | root 或 sudo |
 
 ## 快速部署（推荐）
 
-### 一键安装
+### APT 安装（Ubuntu / Debian）
 
 ```bash
-# 下载并运行安装脚本
-curl -sLO https://github.com/muzimu217/OpenTenBase-deb/releases/download/v5.0-multi10/install.sh
-sudo bash install.sh
+# 1. 配置 APT 仓库（自动检测系统版本）
+curl -sSL https://raw.githubusercontent.com/muzimu217/OpenTenBase-deb/main/scripts/setup-apt.sh | sudo bash
+
+# 2. 安装
+sudo apt update && sudo apt install -y opentenbase
 ```
 
-**预期输出：**
-```
-[INFO] OpenTenBase v5.0 Installer
-[INFO] Detected Ubuntu 22.04 (jammy)
-[INFO] Downloading packages from GitHub...
-[OK] opentenbase_5.0-1ubuntu1_all.deb installed
-[OK] opentenbase-server_5.0-1ubuntu1_amd64.deb installed
-[OK] opentenbase-client_5.0-1ubuntu1_amd64.deb installed
-[OK] opentenbase-contrib_5.0-1ubuntu1_amd64.deb installed
-[OK] Packages installed successfully
+### RPM 安装（RHEL / CentOS / Rocky / Alma / Fedora / openEuler）
+
+```bash
+# 1. 配置 YUM/DNF 仓库
+curl -sSL https://raw.githubusercontent.com/muzimu217/OpenTenBase-deb/main/scripts/setup-rpm.sh | sudo bash
+
+# 2. 安装
+sudo dnf install -y opentenbase
 ```
 
 ### 初始化集群
@@ -123,22 +123,16 @@ SELECT * FROM test;
 
 ## 手动安装（进阶）
 
-如果安装脚本不可用，可以手动下载 .deb 包：
+如果安装脚本不可用，可以从 [GitHub Releases](https://github.com/muzimu217/OpenTenBase-deb/releases) 手动下载包：
 
 ```bash
-# 下载所有 .deb 包
-wget https://github.com/muzimu217/OpenTenBase-deb/releases/download/v5.0-multi10/opentenbase_5.0-1ubuntu1_all.deb
-wget https://github.com/muzimu217/OpenTenBase-deb/releases/download/v5.0-multi10/opentenbase-server_5.0-1ubuntu1_amd64.deb
-wget https://github.com/muzimu217/OpenTenBase-deb/releases/download/v5.0-multi10/opentenbase-client_5.0-1ubuntu1_amd64.deb
-wget https://github.com/muzimu217/OpenTenBase-deb/releases/download/v5.0-multi10/opentenbase-contrib_5.0-1ubuntu1_amd64.deb
-
-# 安装
-sudo dpkg -i *.deb
+# DEB 手动安装
+# 从 releases 下载对应发行版的 .deb 包
+sudo dpkg -i opentenbase_*.deb opentenbase-server_*.deb opentenbase-client_*.deb opentenbase-contrib_*.deb
 sudo apt-get install -f -y  # 解决依赖问题
 
-# 初始化
-sudo opentenbase-ctl init
-sudo opentenbase-ctl start
+# RPM 手动安装
+sudo dnf install ./opentenbase-*.rpm
 ```
 
 ## 常见问题
@@ -152,11 +146,10 @@ E: Unable to locate package opentenbase
 
 **解决方法：**
 ```bash
-# 检查操作系统版本
-lsb_release -a
-
-# 确保使用官方安装脚本
-curl -sLO https://github.com/muzimu217/OpenTenBase-deb/releases/download/v5.0-multi10/install.sh
+# 确保已配置仓库
+curl -sSL https://raw.githubusercontent.com/muzimu217/OpenTenBase-deb/main/scripts/setup-apt.sh | sudo bash
+sudo apt update
+sudo apt install opentenbase
 ```
 
 ### 问题2：GTM 启动失败
@@ -168,14 +161,19 @@ FATAL: binding threads failed for 22
 
 **解决方法：**
 ```bash
-# v5.0-multi10 已自动处理此问题
 # 检查 CPU 核心数
 nproc
 
-# 如果仍失败，手动编辑 gtm.conf 设置线程数
-# 注意：gtm_thread_count 不是合法参数，请参考 GTM 文档
-vim /var/lib/opentenbase/gtm/gtm.conf
-opentenbase-ctl restart
+# 检查内存（最低 3GB）
+free -h
+
+# 查看 GTM 日志
+cat /var/log/opentenbase/5.0/gtm.log
+
+# 重新初始化
+sudo opentenbase-ctl stop
+sudo opentenbase-ctl init
+sudo opentenbase-ctl start
 ```
 
 ### 问题3：端口被占用
@@ -188,13 +186,15 @@ FATAL: could not bind IPv6 socket: Address already in use
 **解决方法：**
 ```bash
 # 检查端口占用
-sudo netstat -tlnp | grep -E '(5432|6666|15432)'
+sudo ss -tlnp | grep -E '(5432|6666|15432)'
 
 # 停止占用端口的服务
 sudo kill -9 <PID>
 
-# 或者修改配置文件中的端口号
-sudo vim /etc/opentenbase/opentenbase.conf
+# 重新初始化
+sudo opentenbase-ctl stop
+sudo opentenbase-ctl init
+sudo opentenbase-ctl start
 ```
 
 ### 问题4：内存不足
@@ -206,14 +206,14 @@ ERROR: out of memory
 
 **解决方法：**
 ```bash
-# 增加交换空间
+# 检查内存（最低 3GB，推荐 4GB+）
+free -h
+
+# 如果内存不足，增加交换空间
 sudo fallocate -l 2G /swapfile
 sudo chmod 600 /swapfile
 sudo mkswap /swapfile
 sudo swapon /swapfile
-
-# 验证
-free -h
 ```
 
 ## 架构概览
@@ -256,7 +256,7 @@ OpenTenBase 是一个分布式数据库，由三个核心组件组成：
 - 📖 阅读 [基础操作](02-basic-ops.md) - 学习常用的数据库操作
 - 🏗️ 了解 [架构原理](03-architecture.md) - 深入理解分布式架构
 - 🚀 查看 [部署指南](07-deployment.md) - Docker 多节点、RPM 单节点/多机部署
-- 🧪 尝试 [实验1：部署集群](../labs/lab-01-deploy.md) - 动手实践
+- 📋 [快速开始总览](../QUICKSTART.md) - 所有安装方式汇总
 
 ## 资源链接
 
