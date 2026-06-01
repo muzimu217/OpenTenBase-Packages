@@ -51,13 +51,15 @@ cmd_init() {
         echo ">>          Current system has ${AVAIL_RAM_MB}MB. Cluster may fail to start."
         echo ">>          Consider using a server with 4GB+ RAM."
     fi
+    # max_connections must be >= 100 (OpenTenBase internal connections + max_wal_senders)
+    # max_pool_size must be >= max_connections (v2.6.0 pool manager enforces this)
     if [ "$AVAIL_RAM_MB" -lt 4096 ]; then
-        MEM_MAX_CONN=20
-        MEM_MAX_POOL=10
+        MEM_MAX_CONN=100
+        MEM_MAX_POOL=100
         MEM_SHARED_BUF=32MB
     elif [ "$AVAIL_RAM_MB" -lt 8192 ]; then
-        MEM_MAX_CONN=50
-        MEM_MAX_POOL=20
+        MEM_MAX_CONN=100
+        MEM_MAX_POOL=100
         MEM_SHARED_BUF=128MB
     else
         MEM_MAX_CONN=100
@@ -92,7 +94,9 @@ cmd_init() {
             echo "# --- opentenbase coordinator overrides ---"
             echo "listen_addresses = '*'"
             echo "port = $COORD_PORT"
-            echo "forward_port = ${COORD_FORWARD_PORT:-6669}"
+            # forward_port is v5.0-only; pooler_port exists in all versions
+            otb_ver="${OTB_HOME##*/}"
+            case "$otb_ver" in 5.*) echo "forward_port = ${COORD_FORWARD_PORT:-6669}" ;; esac
             echo "pooler_port = ${COORD_POOLER_PORT:-6667}"
             echo "pgxc_node_name = '$COORD_NODENAME'"
             echo "log_directory = '/var/log/opentenbase'"
@@ -121,7 +125,8 @@ cmd_init() {
             echo "# --- opentenbase datanode overrides ---"
             echo "listen_addresses = '*'"
             echo "port = $DN1_PORT"
-            echo "forward_port = ${DN1_FORWARD_PORT:-6670}"
+            # forward_port is v5.0-only; pooler_port exists in all versions
+            case "$otb_ver" in 5.*) echo "forward_port = ${DN1_FORWARD_PORT:-6670}" ;; esac
             echo "pooler_port = ${DN1_POOLER_PORT:-6668}"
             echo "pgxc_node_name = '$DN1_NODENAME'"
             echo "log_directory = '/var/log/opentenbase'"
@@ -201,16 +206,26 @@ register_nodes() {
     run_as_otb bash -c "$psql -c \"CREATE GTM NODE gtm_master WITH (HOST='127.0.0.1', PORT=$GTM_PORT, PRIMARY);\"" 2>/dev/null || true
     run_as_otb bash -c "$psql -c \"ALTER GTM NODE gtm_master WITH (HOST='127.0.0.1', PORT=$GTM_PORT, PRIMARY);\"" 2>/dev/null || true
 
-    local coord_fwd=${COORD_FORWARD_PORT:-6669}
-    local dn1_fwd=${DN1_FORWARD_PORT:-6670}
+    # FORWARD parameter is only valid in v5.0+
+    local otb_ver="${OTB_HOME##*/}"
+    local coord_fwd_clause=""
+    local dn1_fwd_clause=""
+    case "$otb_ver" in
+        5.*)
+            local coord_fwd=${COORD_FORWARD_PORT:-6669}
+            local dn1_fwd=${DN1_FORWARD_PORT:-6670}
+            coord_fwd_clause=", FORWARD=$coord_fwd"
+            dn1_fwd_clause=", FORWARD=$dn1_fwd"
+            ;;
+    esac
 
     echo "  registering coordinator node ..."
-    run_as_otb bash -c "$psql -c \"CREATE NODE $COORD_NODENAME WITH (TYPE='coordinator', HOST='127.0.0.1', PORT=$COORD_PORT, FORWARD=$coord_fwd);\"" 2>/dev/null || true
-    run_as_otb bash -c "$psql -c \"ALTER NODE $COORD_NODENAME WITH (TYPE='coordinator', HOST='127.0.0.1', PORT=$COORD_PORT, FORWARD=$coord_fwd);\"" 2>/dev/null || true
+    run_as_otb bash -c "$psql -c \"CREATE NODE $COORD_NODENAME WITH (TYPE='coordinator', HOST='127.0.0.1', PORT=$COORD_PORT$coord_fwd_clause);\"" 2>/dev/null || true
+    run_as_otb bash -c "$psql -c \"ALTER NODE $COORD_NODENAME WITH (TYPE='coordinator', HOST='127.0.0.1', PORT=$COORD_PORT$coord_fwd_clause);\"" 2>/dev/null || true
 
     echo "  registering datanode node ..."
-    run_as_otb bash -c "$psql -c \"CREATE NODE $DN1_NODENAME WITH (TYPE='datanode', HOST='127.0.0.1', PORT=$DN1_PORT, FORWARD=$dn1_fwd, PRIMARY, PREFERRED);\"" 2>/dev/null || true
-    run_as_otb bash -c "$psql -c \"ALTER NODE $DN1_NODENAME WITH (TYPE='datanode', HOST='127.0.0.1', PORT=$DN1_PORT, FORWARD=$dn1_fwd, PRIMARY, PREFERRED);\"" 2>/dev/null || true
+    run_as_otb bash -c "$psql -c \"CREATE NODE $DN1_NODENAME WITH (TYPE='datanode', HOST='127.0.0.1', PORT=$DN1_PORT$dn1_fwd_clause, PRIMARY, PREFERRED);\"" 2>/dev/null || true
+    run_as_otb bash -c "$psql -c \"ALTER NODE $DN1_NODENAME WITH (TYPE='datanode', HOST='127.0.0.1', PORT=$DN1_PORT$dn1_fwd_clause, PRIMARY, PREFERRED);\"" 2>/dev/null || true
 
     echo "  reloading connection pool ..."
     run_as_otb bash -c "$psql -c 'SELECT pgxc_pool_reload();'" >/dev/null 2>&1 || true
@@ -223,8 +238,8 @@ register_nodes() {
         run_as_otb bash -c "$dn1_psql -c \"CREATE GTM NODE gtm_master WITH (HOST='127.0.0.1', PORT=$GTM_PORT, PRIMARY);\"" 2>/dev/null || true
         run_as_otb bash -c "$dn1_psql -c \"ALTER GTM NODE gtm_master WITH (HOST='127.0.0.1', PORT=$GTM_PORT, PRIMARY);\"" 2>/dev/null || true
         # Register coordinator on datanode (needed for pooler GUC validation)
-        run_as_otb bash -c "$dn1_psql -c \"CREATE NODE $COORD_NODENAME WITH (TYPE='coordinator', HOST='127.0.0.1', PORT=$COORD_PORT, FORWARD=$coord_fwd);\"" 2>/dev/null || true
-        run_as_otb bash -c "$dn1_psql -c \"ALTER NODE $COORD_NODENAME WITH (TYPE='coordinator', HOST='127.0.0.1', PORT=$COORD_PORT, FORWARD=$coord_fwd);\"" 2>/dev/null || true
+        run_as_otb bash -c "$dn1_psql -c \"CREATE NODE $COORD_NODENAME WITH (TYPE='coordinator', HOST='127.0.0.1', PORT=$COORD_PORT$coord_fwd_clause);\"" 2>/dev/null || true
+        run_as_otb bash -c "$dn1_psql -c \"ALTER NODE $COORD_NODENAME WITH (TYPE='coordinator', HOST='127.0.0.1', PORT=$COORD_PORT$coord_fwd_clause);\"" 2>/dev/null || true
         run_as_otb bash -c "$dn1_psql -c 'SELECT pgxc_pool_reload();'" >/dev/null 2>&1 || true
     fi
 

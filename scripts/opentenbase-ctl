@@ -169,6 +169,8 @@ cmd_init() {
     # Detect available RAM and auto-tune memory settings
     # OpenTenBase pooler cache requires ~1GB+ non-swappable shared memory per node
     # Minimum recommended: 3GB RAM for single-machine cluster (GTM + coord + dn1)
+    # max_connections must be >= 100 (OpenTenBase internal connections + max_wal_senders)
+    # max_pool_size must be >= max_connections (v2.6.0 pool manager enforces this)
     local avail_ram_mb
     avail_ram_mb=$(awk '/MemTotal/ {printf "%d", $2/1024}' /proc/meminfo 2>/dev/null || echo "4096")
     log_info "Detected ${avail_ram_mb}MB RAM"
@@ -177,11 +179,11 @@ cmd_init() {
         log_warn "OpenTenBase requires at least 3GB RAM for a single-machine cluster."
         log_warn "Current system has ${avail_ram_mb}MB. Cluster may fail to start (OOM)."
         log_warn "Consider using a server with 4GB+ RAM."
-        mem_max_conn=10; mem_max_pool=5; mem_shared_buf=16MB
+        mem_max_conn=100; mem_max_pool=100; mem_shared_buf=16MB
     elif [ "$avail_ram_mb" -lt 4096 ]; then
-        mem_max_conn=20; mem_max_pool=10; mem_shared_buf=32MB
+        mem_max_conn=100; mem_max_pool=100; mem_shared_buf=32MB
     elif [ "$avail_ram_mb" -lt 8192 ]; then
-        mem_max_conn=50; mem_max_pool=20; mem_shared_buf=128MB
+        mem_max_conn=100; mem_max_pool=100; mem_shared_buf=128MB
     else
         mem_max_conn=100; mem_max_pool=100; mem_shared_buf=128MB
     fi
@@ -214,12 +216,17 @@ cmd_init() {
     }
 
     # Configure Datanode (no gtm_host/gtm_port — those are not valid GUCs)
+    # forward_port is v5.0-only; pooler_port exists in all versions
+    local forward_line=""
+    if [[ "$ver" == "5.0" ]]; then
+        forward_line="forward_port = 6670"
+    fi
     cat >> "${data}/dn1/postgresql.conf" <<DNCONF
 
 # -- OpenTenBase datanode config --
 listen_addresses = '*'
 port = ${DN_PORT}
-forward_port = 6670
+${forward_line}
 pooler_port = ${DN_POOLER_PORT}
 pgxc_node_name = 'dn1'
 log_directory = '${log}'
@@ -248,12 +255,17 @@ HBA
     }
 
     # Configure Coordinator (no gtm_host/gtm_port — those are not valid GUCs)
+    # forward_port is v5.0-only; pooler_port exists in all versions
+    local coord_forward_line=""
+    if [[ "$ver" == "5.0" ]]; then
+        coord_forward_line="forward_port = 6669"
+    fi
     cat >> "${data}/coord/postgresql.conf" <<COORDCONF
 
 # -- OpenTenBase coordinator config --
 listen_addresses = '*'
 port = ${COORD_PORT}
-forward_port = 6669
+${coord_forward_line}
 pooler_port = ${COORD_POOLER_PORT}
 pgxc_node_name = 'coord'
 log_directory = '${log}'
