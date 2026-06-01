@@ -37,12 +37,13 @@
 | EulerOS 2.0 (aarch64) | 手动通过 | 手动通过 | 完整端到端验证通过 | — | 已完成 |
 | Rocky Linux 9 (aarch64) | — | — | — | Docker 通过 | Docker E2E 通过 |
 | openEuler 24.03 (aarch64) | — | — | — | Docker 通过 | Docker E2E 通过 |
+| HCE 2.0 (aarch64) | 手动通过 | 手动通过 | v5.0→v2.6.0→v2.5.0→v5.0 通过 | — | 已完成 |
 
 ### DEB 包（aarch64）
 
 | 发行版 | 安装测试 | 多节点测试 | 版本切换 | 状态 |
 |--------|---------|-----------|---------|------|
-| Ubuntu 22.04 (arm64) | 构建完成 | — | — | 原生 ARM64 构建完成（DevEnvVM HCE 2.0） |
+| Ubuntu 22.04 (arm64) | Docker 通过 | Docker 通过 | — | 完整测试通过（Docker 容器） |
 
 ## 测试用例
 

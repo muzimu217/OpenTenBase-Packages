@@ -132,6 +132,26 @@ cmd_switch() {
     ln -sfn "$CONF_DIR/$target" "$CURRENT_LINK"
     log_info "Switched to OpenTenBase $target"
 
+    # Update /usr/bin symlinks to point to the target version's binaries
+    local target_bin="/usr/lib/opentenbase/$target/bin"
+    if [ -d "$target_bin" ]; then
+        local updated=0
+        for link in /usr/bin/*; do
+            [ -L "$link" ] || continue
+            local target_path=$(readlink "$link")
+            case "$target_path" in
+                /usr/lib/opentenbase/*/bin/*)
+                    local bin_name=$(basename "$target_path")
+                    if [ -e "$target_bin/$bin_name" ]; then
+                        ln -sfn "$target_bin/$bin_name" "$link"
+                        updated=$((updated + 1))
+                    fi
+                    ;;
+            esac
+        done
+        [ "$updated" -gt 0 ] && log_info "Updated $updated binary symlinks to $target"
+    fi
+
     # Show new config location
     echo ""
     echo "Active config: $CONF_DIR/current/opentenbase.conf"
