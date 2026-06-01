@@ -97,27 +97,27 @@ jobs:
             $OTB_BIN/initdb -D $OTB_HOME/dn1 --nodename=dn1 --nodetype=datanode \
             --master_gtm_nodename=one --master_gtm_ip=127.0.0.1 --master_gtm_port=6666
 
-          cat >> $OTB_HOME/dn1/postgresql.conf <<EOF
+          sudo bash -c "cat >> $OTB_HOME/dn1/postgresql.conf <<EOF
           port = 5433
           pooler_port = 6668
           listen_addresses = '*'
-          EOF
-          [ "$OTB_VERSION" = "5.0" ] && echo "forward_port = 6670" >> $OTB_HOME/dn1/postgresql.conf
+          EOF"
+          [ "$OTB_VERSION" = "5.0" ] && sudo bash -c "echo 'forward_port = 6670' >> $OTB_HOME/dn1/postgresql.conf"
 
           # Init Coordinator
           sudo -u $OTB_USER env LD_LIBRARY_PATH="/usr/lib/opentenbase/${OTB_VERSION}/lib" \
             $OTB_BIN/initdb -D $OTB_HOME/coord --nodename=coord --nodetype=coordinator \
             --master_gtm_nodename=one --master_gtm_ip=127.0.0.1 --master_gtm_port=6666
 
-          cat >> $OTB_HOME/coord/postgresql.conf <<EOF
+          sudo bash -c "cat >> $OTB_HOME/coord/postgresql.conf <<EOF
           port = 5432
           pooler_port = 6669
           listen_addresses = '*'
-          EOF
-          [ "$OTB_VERSION" = "5.0" ] && echo "forward_port = 6671" >> $OTB_HOME/coord/postgresql.conf
+          EOF"
+          [ "$OTB_VERSION" = "5.0" ] && sudo bash -c "echo 'forward_port = 6671' >> $OTB_HOME/coord/postgresql.conf"
 
-          echo 'host all all 0.0.0.0/0 trust' >> $OTB_HOME/coord/pg_hba.conf
-          echo 'host all all 0.0.0.0/0 trust' >> $OTB_HOME/dn1/pg_hba.conf
+          sudo bash -c "echo 'host all all 0.0.0.0/0 trust' >> $OTB_HOME/coord/pg_hba.conf"
+          sudo bash -c "echo 'host all all 0.0.0.0/0 trust' >> $OTB_HOME/dn1/pg_hba.conf"
 
           # Start GTM
           sudo -u $OTB_USER env LD_LIBRARY_PATH="/usr/lib/opentenbase/${OTB_VERSION}/lib" \
