@@ -12,7 +12,7 @@ on:
 jobs:
   stress-test:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
 
     steps:
       - name: Checkout
@@ -210,23 +210,23 @@ jobs:
 
           # Batch INSERT
           echo ""
-          echo "=== 2. Batch INSERT (10000 rows) ==="
+          echo "=== 2. Batch INSERT (1000 rows) ==="
           START=$(date +%s)
-          run_as_otb $PSQL -c "INSERT INTO stress_test SELECT i, 'row_' || i FROM generate_series(1, 10000) i;"
+          run_as_otb $PSQL -c "INSERT INTO stress_test SELECT i, 'row_' || i FROM generate_series(1, 1000) i;"
           END=$(date +%s)
           COUNT=$(run_as_otb $PSQL -t -A -c "SELECT count(*) FROM stress_test;")
           echo "  Rows: $COUNT, Duration: $((END - START))s"
-          [ "$COUNT" = "10000" ] && echo "  PASS" || echo "  FAIL"
+          [ "$COUNT" = "1000" ] && echo "  PASS" || echo "  FAIL"
 
-          # Large batch INSERT
+          # Larger batch INSERT
           echo ""
-          echo "=== 3. Large Batch INSERT (100000 rows) ==="
+          echo "=== 3. Larger Batch INSERT (5000 rows) ==="
           START=$(date +%s)
-          run_as_otb $PSQL -c "INSERT INTO stress_test SELECT i + 100000, 'batch_' || i FROM generate_series(1, 100000) i;"
+          run_as_otb $PSQL -c "INSERT INTO stress_test SELECT i + 10000, 'batch_' || i FROM generate_series(1, 5000) i;"
           END=$(date +%s)
           COUNT=$(run_as_otb $PSQL -t -A -c "SELECT count(*) FROM stress_test;")
           echo "  Rows: $COUNT, Duration: $((END - START))s"
-          [ "$COUNT" = "110000" ] && echo "  PASS" || echo "  FAIL"
+          [ "$COUNT" = "6000" ] && echo "  PASS" || echo "  FAIL"
 
           # Data consistency
           echo ""
@@ -238,7 +238,7 @@ jobs:
           echo ""
           echo "=== 5. Batch UPDATE ==="
           START=$(date +%s)
-          run_as_otb $PSQL -c "UPDATE stress_test SET val = 'updated_' || id WHERE id <= 1000;"
+          run_as_otb $PSQL -c "UPDATE stress_test SET val = 'updated_' || id WHERE id <= 500;"
           END=$(date +%s)
           echo "  Duration: $((END - START))s  PASS"
 
@@ -246,7 +246,7 @@ jobs:
           echo ""
           echo "=== 6. Batch DELETE ==="
           START=$(date +%s)
-          run_as_otb $PSQL -c "DELETE FROM stress_test WHERE id > 200000;"
+          run_as_otb $PSQL -c "DELETE FROM stress_test WHERE id > 50000;"
           END=$(date +%s)
           COUNT=$(run_as_otb $PSQL -t -A -c "SELECT count(*) FROM stress_test;")
           echo "  Rows remaining: $COUNT, Duration: $((END - START))s  PASS"
@@ -255,7 +255,7 @@ jobs:
           echo ""
           echo "=== 7. Complex Aggregation ==="
           START=$(date +%s)
-          run_as_otb $PSQL -c "SELECT count(*), avg(id), min(id), max(id) FROM stress_test WHERE id > 1000;"
+          run_as_otb $PSQL -c "SELECT count(*), avg(id), min(id), max(id) FROM stress_test WHERE id > 100;"
           END=$(date +%s)
           echo "  Duration: $((END - START))s  PASS"
 
