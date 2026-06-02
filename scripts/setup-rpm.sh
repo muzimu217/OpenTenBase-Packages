@@ -136,6 +136,18 @@ configure_repo() {
 
     local repo_url="${REPO_BASE_URL}/${REPO_SUBDIR}/${ARCH}"
 
+    # Check if the repo URL is valid (repodata exists)
+    if ! curl -sf --connect-timeout 5 --max-time 10 "${repo_url}/repodata/repomd.xml" -o /dev/null 2>/dev/null; then
+        if [ "$ARCH" = "aarch64" ]; then
+            log_warn "aarch64 repo not available for $REPO_SUBDIR, falling back to x86_64"
+            ARCH="x86_64"
+            repo_url="${REPO_BASE_URL}/${REPO_SUBDIR}/${ARCH}"
+        else
+            log_error "Repository not available: $repo_url"
+            exit 1
+        fi
+    fi
+
     cat > /etc/yum.repos.d/opentenbase.repo << EOF
 [opentenbase]
 name=OpenTenBase Packages

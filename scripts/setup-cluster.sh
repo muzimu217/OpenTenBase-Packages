@@ -473,6 +473,19 @@ setup_rpm_repo() {
     esac
 
     local full_url="${repo_url}/${repo_subdir}/${ARCH}"
+
+    # Check if the repo URL is valid (repodata exists)
+    if ! curl -sf --connect-timeout 5 --max-time 10 "${full_url}/repodata/repomd.xml" -o /dev/null 2>/dev/null; then
+        if [ "$ARCH" = "aarch64" ]; then
+            log_warn "aarch64 repo not available for $repo_subdir, falling back to x86_64"
+            ARCH="x86_64"
+            full_url="${repo_url}/${repo_subdir}/${ARCH}"
+        else
+            log_error "Repository not available: $full_url"
+            exit 1
+        fi
+    fi
+
     cat > /etc/yum.repos.d/opentenbase.repo <<EOF
 [opentenbase]
 name=OpenTenBase Packages
