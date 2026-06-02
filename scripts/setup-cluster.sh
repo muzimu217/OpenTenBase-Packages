@@ -346,7 +346,7 @@ setup_repo() {
 }
 
 setup_apt_repo() {
-    local cf_url="https://apt.blackevil217.com/apt"
+    local cf_url="https://repo.blackevil217.com/apt"
     local github_url="https://cduestc-openatom-open-source-club.github.io/OpenTenBase-Packages/apt"
     local expected_fp="D8B2E316E1FF88EE178703549D8FA46F3A55D5F0"
 
@@ -413,7 +413,7 @@ EOF
 }
 
 setup_rpm_repo() {
-    local cf_url="https://apt.blackevil217.com/rpm"
+    local cf_url="https://repo.blackevil217.com/rpm"
     local github_url="https://cduestc-openatom-open-source-club.github.io/OpenTenBase-Packages/rpm"
     local expected_fp="D8B2E316E1FF88EE178703549D8FA46F3A55D5F0"
 

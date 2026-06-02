@@ -570,8 +570,8 @@ fi
 # Create index page
 create_index_page "$OUTPUT_DIR"
 
-# No CNAME file — custom domains (apt.blackevil217.com, rpm.blackevil217.com)
-# are configured via Cloudflare reverse proxy, not GitHub Pages CNAME.
+# CNAME file for custom domain (Cloudflare proxied)
+echo "repo.blackevil217.com" > "$OUTPUT_DIR/CNAME"
 
 echo ""
 echo "========================================"

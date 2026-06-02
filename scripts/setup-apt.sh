@@ -34,13 +34,13 @@ log_step() {
 
 # 配置 - Auto-detect fastest mirror
 detect_mirror() {
-    local cf_url="https://apt.blackevil217.com/apt"
+    local cf_url="https://repo.blackevil217.com/apt"
     local github_url="https://cduestc-openatom-open-source-club.github.io/OpenTenBase-Packages/apt"
 
     # Try Cloudflare CDN first (global acceleration)
     if curl -sLf --connect-timeout 5 --max-time 10 "${cf_url}/gpg-key.asc" -o /dev/null 2>/dev/null; then
         APT_REPO_URL="$cf_url"
-        log_info "Using Cloudflare CDN mirror (apt.blackevil217.com)"
+        log_info "Using Cloudflare CDN mirror (repo.blackevil217.com/apt)"
     else
         APT_REPO_URL="$github_url"
         log_info "Using GitHub repository"

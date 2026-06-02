@@ -6,6 +6,17 @@ Format based on [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [v5.0-p11] — 2026-06-02
+
+Documentation updates for Cloudflare CDN acceleration.
+
+### Added
+- CDN acceleration documentation in README.md and README_zh.md
+- Mirror acceleration section explaining CDN priority and fallback
+- Cloudflare CDN feature added to features table
+
+---
+
 ## [v5.0-p10] — 2026-06-02
 
 Docker container E2E testing + native ARM64 package builds + version switch fix.
@@ -353,6 +364,7 @@ First release.
 
 ---
 
+[v5.0-p11]: https://github.com/CDUESTC-OpenAtom-Open-Source-Club/OpenTenBase-Packages/releases/tag/v5.0-p11
 [v5.0-p8]: https://github.com/CDUESTC-OpenAtom-Open-Source-Club/OpenTenBase-Packages/releases/tag/v5.0-p8
 [v5.0-p4]: https://github.com/CDUESTC-OpenAtom-Open-Source-Club/OpenTenBase-Packages/releases/tag/v5.0-p4
 [v5.0-p3]: https://github.com/CDUESTC-OpenAtom-Open-Source-Club/OpenTenBase-Packages/releases/tag/v5.0-p3

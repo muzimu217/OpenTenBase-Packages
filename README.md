@@ -35,6 +35,7 @@ English | [中文](README_zh.md)
 | **GPG signed packages** | All release packages are GPG-signed (RSA 4096-bit) for authenticity verification |
 | **systemd integration** | Native systemd service units, managed via `systemctl` |
 | **Cluster management** | Built-in `opentenbase-ctl` script for one-command init, start, stop |
+| **Cloudflare CDN acceleration** | Global CDN acceleration mirror: `repo.blackevil217.com` |
 
 ---
 
@@ -68,6 +69,19 @@ sudo dnf install opentenbase
 ```bash
 curl -sSL https://raw.githubusercontent.com/CDUESTC-OpenAtom-Open-Source-Club/OpenTenBase-Packages/main/scripts/setup-cluster.sh | sudo bash
 ```
+
+---
+
+## Mirror Acceleration
+
+The installation scripts automatically detect and use the fastest available mirror:
+
+1. **Cloudflare CDN** (`repo.blackevil217.com/apt` for APT, `repo.blackevil217.com/rpm` for RPM) — global acceleration, free forever
+2. **GitHub Pages** (`cduestc-openatom-open-source-club.github.io/OpenTenBase-Packages/`) — direct fallback
+
+> **Note**: The `curl` commands in the Quick Install section download scripts from `raw.githubusercontent.com`. Once executed, the scripts will automatically configure your system to use the CDN-accelerated repository.
+
+**For users in China**: Cloudflare CDN provides global acceleration including China. If you experience slow access speeds, the scripts will automatically fall back to GitHub Pages. Both mirrors are accessible from China without VPN.
 
 ---
 
@@ -325,6 +339,7 @@ OpenTenBase-Packages/
 
 | Release | Date | Assets | Notes |
 |---------|------|--------|-------|
+| v5.0-p11 | 2026-06-02 | 156 | Cloudflare CDN acceleration documentation |
 | v5.0-p10 | 2026-06-02 | 156 | ARM64 native builds + Docker E2E + version switch fix |
 | v5.0-p9 | 2026-06-01 | 150 | Multi-version end-to-end verification on ARM64 |
 | v5.0-p8 | 2026-06-01 | 150 | Stress test (7/7), cross-machine deployment, dh_install fix |
@@ -480,4 +495,4 @@ Same as OpenTenBase — [Apache License 2.0](https://www.apache.org/licenses/LIC
 ---
 
 **Maintainer**: muzimu217
-**Last Updated**: 2026-06-02 (v5.0-p10, ARM64 native builds + full test matrix)
+**Last Updated**: 2026-06-02 (v5.0-p11, CDN acceleration documentation)

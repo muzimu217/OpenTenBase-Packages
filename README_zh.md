@@ -33,6 +33,7 @@
 | **APT/RPM 仓库** | 官方仓库托管在 GitHub Pages — `apt install opentenbase` / `dnf install opentenbase` |
 | **systemd 集成** | 原生 systemd 服务单元，支持 `systemctl` 管理 |
 | **集群管理** | 内置 `opentenbase-ctl` 管理脚本，一键初始化、启动、停止集群 |
+| **Cloudflare CDN 加速** | 全球 CDN 加速镜像：`repo.blackevil217.com` |
 
 ---
 
@@ -58,6 +59,19 @@ sudo dnf install opentenbase
 ```bash
 curl -sSL https://raw.githubusercontent.com/CDUESTC-OpenAtom-Open-Source-Club/OpenTenBase-Packages/main/scripts/setup-cluster.sh | sudo bash
 ```
+
+---
+
+## 镜像加速
+
+安装脚本会自动检测并使用最快的可用镜像：
+
+1. **Cloudflare CDN**（`repo.blackevil217.com/apt` 用于 APT，`repo.blackevil217.com/rpm` 用于 RPM）— 全球加速，永久免费
+2. **GitHub Pages**（`cduestc-openatom-open-source-club.github.io/OpenTenBase-Packages/`）— 直接备用
+
+> **注意**：快速安装部分的 `curl` 命令从 `raw.githubusercontent.com` 下载脚本。执行后，脚本会自动将您的系统配置为使用 CDN 加速仓库。
+
+**中国用户**：Cloudflare CDN 提供全球加速，包括中国地区。如果访问速度较慢，脚本会自动回退到 GitHub Pages。两种镜像均可在中国无需 VPN 直接访问。
 
 ---
 
@@ -321,6 +335,7 @@ OpenTenBase-Packages/
 
 | 版本 | 日期 | 资产数 | 说明 |
 |------|------|--------|------|
+| v5.0-p11 | 2026-06-02 | 156 | Cloudflare CDN 加速文档 |
 | v5.0-p10 | 2026-06-02 | 156 | ARM64 原生构建 + Docker E2E + 版本切换修复 |
 | v5.0-p9 | 2026-06-01 | 150 | 多版本端到端验证（ARM64 实机） |
 | v5.0-p8 | 2026-06-01 | 150 | 压力测试（7/7）、跨机器部署、dh_install 修复 |
@@ -474,4 +489,4 @@ gh workflow run stress-test.yml
 ---
 
 **维护者**：muzimu217
-**最后更新**：2026-06-02（v5.0-p10，ARM64 原生构建 + 完整测试矩阵）
+**最后更新**：2026-06-02（v5.0-p11，CDN 加速文档更新）

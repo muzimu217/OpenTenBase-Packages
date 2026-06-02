@@ -71,8 +71,10 @@ jobs:
           echo "## Repository Deployed!" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### URLs" >> $GITHUB_STEP_SUMMARY
-          echo "- APT: \`https://cduestc-openatom-open-source-club.github.io/OpenTenBase-Packages/apt\`" >> $GITHUB_STEP_SUMMARY
-          echo "- RPM: \`https://cduestc-openatom-open-source-club.github.io/OpenTenBase-Packages/rpm\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Custom Domain: \`https://repo.blackevil217.com/\`" >> $GITHUB_STEP_SUMMARY
+          echo "- APT: \`https://repo.blackevil217.com/apt\`" >> $GITHUB_STEP_SUMMARY
+          echo "- RPM: \`https://repo.blackevil217.com/rpm\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Fallback: \`https://cduestc-openatom-open-source-club.github.io/OpenTenBase-Packages/\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Install" >> $GITHUB_STEP_SUMMARY
           echo "**DEB:**" >> $GITHUB_STEP_SUMMARY

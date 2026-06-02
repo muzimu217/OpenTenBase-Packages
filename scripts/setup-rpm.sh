@@ -17,13 +17,13 @@ log_step()  { echo -e "${BLUE}[STEP]${NC} $1"; }
 
 # Auto-detect fastest mirror (Cloudflare CDN first, GitHub fallback)
 detect_mirror() {
-    local cf_url="https://apt.blackevil217.com/rpm"
+    local cf_url="https://repo.blackevil217.com/rpm"
     local github_url="https://cduestc-openatom-open-source-club.github.io/OpenTenBase-Packages/rpm"
 
     # Try Cloudflare CDN first (global acceleration)
     if curl -sLf --connect-timeout 5 --max-time 10 "${cf_url}/gpg-key.asc" -o /dev/null 2>/dev/null; then
         REPO_BASE_URL="$cf_url"
-        log_info "Using Cloudflare CDN mirror (rpm.blackevil217.com)"
+        log_info "Using Cloudflare CDN mirror (repo.blackevil217.com/rpm)"
     else
         REPO_BASE_URL="$github_url"
         log_info "Using GitHub repository"
