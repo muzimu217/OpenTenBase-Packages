@@ -54,8 +54,9 @@ jobs:
       - name: Download DEB artifacts
         uses: actions/download-artifact@v4
         with:
-          name: debs-${{ matrix.distro }}-amd64
+          pattern: debs-${{ matrix.distro }}-*-amd64
           path: debs/
+          merge-multiple: true
 
       - name: Run smoke test
         run: |
