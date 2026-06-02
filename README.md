@@ -81,6 +81,13 @@ The installation scripts automatically detect and use the fastest available mirr
 
 > **Note**: The `curl` commands in the Quick Install section download scripts from `raw.githubusercontent.com`. Once executed, the scripts will automatically configure your system to use the CDN-accelerated repository.
 
+**CDN Speed Test** (Huawei Cloud EulerOS aarch64):
+
+| Mirror | Download Time | Speedup |
+|--------|--------------|---------|
+| Cloudflare CDN | **0.6s** | **~200x** |
+| GitHub Pages (direct) | 2m12s | baseline |
+
 **For users in China**: Cloudflare CDN provides global acceleration including China. If you experience slow access speeds, the scripts will automatically fall back to GitHub Pages. Both mirrors are accessible from China without VPN.
 
 ---
@@ -113,19 +120,21 @@ The installation scripts automatically detect and use the fastest available mirr
 
 ## Platform Support Matrix (CI Verified)
 
-| Distribution | Version | DEB | RPM |
-|-------------|---------|:---:|:---:|
-| Ubuntu | 20.04 / 22.04 / 24.04 / 25.04 | ✅ | — |
-| Debian | 11 / 12 / 13 | ✅ | — |
-| Rocky Linux | 8 / 9 | — | ✅ |
-| AlmaLinux | 8 / 9 | — | ✅ |
-| CentOS Stream | 8 / 9 | — | ✅ |
-| Fedora | 40 | — | ✅ |
-| openEuler | 22.03 | — | ✅ |
+| Distribution | Version | DEB | RPM | x86_64 | aarch64 |
+|-------------|---------|:---:|:---:|:------:|:------:|
+| Ubuntu | 20.04 / 22.04 / 24.04 / 25.04 | ✅ | — | ✅ | ✅ |
+| Debian | 11 / 12 / 13 | ✅ | — | ✅ | ✅ |
+| Rocky Linux | 8 / 9 | — | ✅ | ✅ | ✅ (el9 only) |
+| AlmaLinux | 8 / 9 | — | ✅ | ✅ | ✅ (el9 only) |
+| CentOS Stream | 8 / 9 | — | ✅ | ✅ | — |
+| Fedora | 40 | — | ✅ | ✅ | — |
+| openEuler | 22.03 | — | ✅ | ✅ | — |
 
-> **Total**: 15 distros, 150 packages per release (126 DEB + 24 RPM) — 3 versions × 15 distros
+> **Total**: 15 distros, 150+ packages per release — 3 versions × 15 distros
 >
-> **ARM64 Verified**: openEuler 22.03 aarch64 (hdspace cloud, 4vCPU 8GiB) + Ubuntu 24.04 aarch64 (developer-1) — full cluster deployment, SQL connectivity, and distributed table operations confirmed.
+> **aarch64 Note**: RPM aarch64 packages are currently only available for el9 (Rocky/Alma 9). The setup scripts automatically fall back to x86_64 when an aarch64 repo is unavailable. DEB aarch64 is fully supported for all distros.
+>
+> **ARM64 Verified**: openEuler 22.03 aarch64 (hdspace cloud, 4vCPU 8GiB) + Ubuntu 24.04 aarch64 — full cluster deployment, SQL connectivity, and distributed table operations confirmed.
 
 ---
 

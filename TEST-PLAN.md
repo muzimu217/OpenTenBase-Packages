@@ -356,6 +356,7 @@ All 5 advanced test suites pass on all 14 distros (7 DEB + 7 RPM).
 
 | 日期 | 测试人 | 通过/总数 | 备注 |
 |------|--------|-----------|------|
+| 2026-06-02 | Claude | 仓库部署测试 | CDN 加速 200x，RPM 安装测试通过（EulerOS aarch64），aarch64 回退修复 |
 | 2026-06-01 | Claude | 7/7 压力测试 + 跨机器部署 | CI run 26740585786，压力测试全部通过；跨机器部署 (devenv ARM64 + 47.108 x86_64) 验证通过 |
 | 2026-05-30 | Claude | 14/14 发行版 + 31/31 高级测试 | CI run 26683489025，所有发行版和高级测试全部通过 |
 | 2026-05-26 | Claude | 25/28 | 基础部署和 CRUD 全部通过，并发和性能测试未执行 |
@@ -395,6 +396,65 @@ All 7 stress tests pass. Workflow: `.github/workflows/stress-test.yml`
 | 数据本地性 | 直接查询远程 Datanode 确认数据存储 | ✅ |
 
 测试脚本：`test/cross-machine-test.sh`
+
+## APT/RPM 仓库部署测试（2026-06-02）
+
+### 仓库结构验证
+
+| 测试项 | URL | 结果 |
+|--------|-----|------|
+| 仓库首页 | `https://repo.blackevil217.com/` | ✅ 200 |
+| APT Release (jammy) | `https://repo.blackevil217.com/apt/dists/jammy/Release` | ✅ 200 |
+| APT Release (noble) | `https://repo.blackevil217.com/apt/dists/noble/Release` | ✅ 200 |
+| APT Packages | `https://repo.blackevil217.com/apt/dists/jammy/main/binary-amd64/Packages` | ✅ 200 |
+| APT GPG Key | `https://repo.blackevil217.com/apt/gpg-key.asc` | ✅ 200 |
+| RPM repomd (el9/x86_64) | `https://repo.blackevil217.com/rpm/el9/x86_64/repodata/repomd.xml` | ✅ 200 |
+| RPM repomd (el9/aarch64) | `https://repo.blackevil217.com/rpm/el9/aarch64/repodata/repomd.xml` | ✅ 200 |
+| RPM repomd (openeuler/x86_64) | `https://repo.blackevil217.com/rpm/openeuler/x86_64/repodata/repomd.xml` | ✅ 200 |
+| RPM repomd (openeuler/aarch64) | `https://repo.blackevil217.com/rpm/openeuler/aarch64/repodata/repomd.xml` | ❌ 404 |
+| RPM GPG Key | `https://repo.blackevil217.com/rpm/gpg-key.asc` | ✅ 200 |
+
+### aarch64 仓库可用性
+
+| 发行版 | aarch64 仓库 | 原因 |
+|--------|-------------|------|
+| el9 (Rocky/Alma 9) | ✅ 可用 | 有 almalinux-9 和 rockylinux-9 aarch64 RPM |
+| el8 (Rocky/Alma 8) | ❌ 不可用 | release 中无 el8 aarch64 RPM |
+| fedora | ❌ 不可用 | release 中无 fedora aarch64 RPM |
+| openeuler | ❌ 不可用 | release 中无 openeuler aarch64 RPM |
+
+**已修复**: `setup-rpm.sh` 和 `setup-cluster.sh` 已添加 aarch64 回退逻辑——当 aarch64 仓库不存在时，自动回退到 x86_64 仓库。
+
+### CDN 加速测试（EulerOS 2.0 aarch64, 华为云 devenv）
+
+| 镜像源 | 下载 GPG Key 耗时 | 说明 |
+|--------|-------------------|------|
+| Cloudflare CDN (repo.blackevil217.com) | **0.6s** | 全球 CDN 加速 |
+| GitHub Pages (直接) | **2m12s** | 无 CDN，直连 GitHub |
+| **加速比** | **~200x** | CDN 显著快于直连 |
+
+### RPM 仓库安装测试（EulerOS 2.0 aarch64）
+
+| 测试项 | 结果 | 说明 |
+|--------|------|------|
+| setup-rpm.sh 下载 | ✅ | 脚本从 GitHub 下载成功 |
+| 仓库配置 | ✅ | `/etc/yum.repos.d/opentenbase.repo` 正确配置 |
+| CDN 镜像检测 | ✅ | 自动选择 `repo.blackevil217.com/rpm` |
+| 包列表查询 | ✅ | `dnf list available opentenbase*` 成功 |
+| 已安装版本 | ✅ | v2.5.0, v2.6.0, v5.0 (active) 已安装 |
+| 版本切换 | ✅ | `opentenbase-switch-version` 正常工作 |
+| 版本信息 | ✅ | `postgres --version` 显示 OpenTenBase_v5.0 |
+
+### APT 仓库结构验证
+
+| 测试项 | 结果 | 说明 |
+|--------|------|------|
+| Release 文件 | ✅ | 包含 main, v2.6, v2.5 三个组件 |
+| Packages 文件 | ✅ | 6 个 DEB 包 (server, client, contrib, dev, doc, meta) |
+| GPG Key | ✅ | PGP 格式密钥可下载 |
+| 多版本组件 | ✅ | main=v5.0, v2.6=v2.6.0, v2.5=v2.5.0 |
+
+**注意**: 无法在现有 hdspace 服务器上测试 APT 安装（两台服务器均为 EulerOS/RPM 系统）。APT 仓库结构已通过 HTTP 验证，实际安装测试需在 Ubuntu/Debian 环境中进行。
 
 ## 已知问题
 

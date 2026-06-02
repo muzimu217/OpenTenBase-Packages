@@ -71,6 +71,13 @@ curl -sSL https://raw.githubusercontent.com/CDUESTC-OpenAtom-Open-Source-Club/Op
 
 > **注意**：快速安装部分的 `curl` 命令从 `raw.githubusercontent.com` 下载脚本。执行后，脚本会自动将您的系统配置为使用 CDN 加速仓库。
 
+**CDN 加速效果**（华为云 EulerOS aarch64 实测）：
+
+| 镜像源 | 下载耗时 | 加速比 |
+|--------|---------|--------|
+| Cloudflare CDN | **0.6s** | **~200x** |
+| GitHub Pages（直连） | 2m12s | 基准 |
+
 **中国用户**：Cloudflare CDN 提供全球加速，包括中国地区。如果访问速度较慢，脚本会自动回退到 GitHub Pages。两种镜像均可在中国无需 VPN 直接访问。
 
 ---
@@ -103,8 +110,8 @@ curl -sSL https://raw.githubusercontent.com/CDUESTC-OpenAtom-Open-Source-Club/Op
 
 ## 平台支持矩阵
 
-| 发行版 | 版本 | DEB | RPM | x86_64 | ARM64 | 状态 |
-|--------|------|:---:|:---:|:------:|:-----:|------|
+| 发行版 | 版本 | DEB | RPM | x86_64 | aarch64 | 状态 |
+|--------|------|:---:|:---:|:------:|:------:|------|
 | Ubuntu | 20.04 (Focal) | ✅ | — | ✅ | ✅ | 已验证 |
 | Ubuntu | 22.04 (Jammy) | ✅ | — | ✅ | ✅ | 已验证 |
 | Ubuntu | 24.04 (Noble) | ✅ | — | ✅ | ✅ | 已验证 |
@@ -113,10 +120,12 @@ curl -sSL https://raw.githubusercontent.com/CDUESTC-OpenAtom-Open-Source-Club/Op
 | Debian | 12 (Bookworm) | ✅ | — | ✅ | ✅ | 已验证 |
 | Debian | 13 (Trixie) | ✅ | — | ✅ | — | 已验证 |
 | CentOS Stream | 8 / 9 | — | ✅ | ✅ | — | 已验证 |
-| Rocky Linux | 8 / 9 | — | ✅ | ✅ | ✅ | 已验证 |
-| AlmaLinux | 8 / 9 | — | ✅ | ✅ | ✅ | 已验证 |
-| Fedora | 40 | — | ✅ | ✅ | ✅ | 已验证 |
-| OpenEuler | 22.03 | — | ✅ | ✅ | ✅ | ✅ 已验证（hdspace 实测） |
+| Rocky Linux | 8 / 9 | — | ✅ | ✅ | ✅ (仅 el9) | 已验证 |
+| AlmaLinux | 8 / 9 | — | ✅ | ✅ | ✅ (仅 el9) | 已验证 |
+| Fedora | 40 | — | ✅ | ✅ | — | 已验证 |
+| OpenEuler | 22.03 | — | ✅ | ✅ | — | 已验证 |
+
+> **aarch64 说明**: RPM aarch64 包目前仅支持 el9（Rocky/Alma 9）。当 aarch64 仓库不存在时，安装脚本会自动回退到 x86_64 仓库。DEB aarch64 全面支持所有发行版。
 
 ---
 
