@@ -305,6 +305,11 @@ jobs:
 
           mkdir -p ${{ github.workspace }}/debs
 
+          # Copy debian directory and patches to source
+          cp -r debian/ /tmp/source/OpenTenBase/debian/
+          mkdir -p /tmp/source/OpenTenBase/debian/patches
+          cp patches/*.patch /tmp/source/OpenTenBase/debian/patches/ 2>/dev/null || true
+
           bash scripts/build-deb.sh \
             --source-dir /tmp/source/OpenTenBase \
             --version "$VERSION" \

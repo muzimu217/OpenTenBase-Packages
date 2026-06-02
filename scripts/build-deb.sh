@@ -1,12 +1,9 @@
 #!/bin/bash
 # OpenTenBase .deb Build Script
-# Usage: ./build-deb.sh [source_dir] [output_dir]
+# Usage: ./build-deb.sh --source-dir <dir> --version <ver> --codename <name> --output-dir <dir>
+# Or legacy: ./build-deb.sh [source_dir] [output_dir]
 
 set -e
-
-# Default paths
-SOURCE_DIR="${1:-/source}"
-OUTPUT_DIR="${2:-/output}"
 
 # Colors
 RED='\033[0;31m'
@@ -17,6 +14,46 @@ NC='\033[0m'
 log_info()  { echo -e "${GREEN}[INFO]${NC} $1"; }
 log_warn()  { echo -e "${YELLOW}[WARN]${NC} $1"; }
 log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
+
+# Default paths
+SOURCE_DIR="/source"
+OUTPUT_DIR="/output"
+VERSION=""
+CODENAME=""
+OTB_VERSION=""
+
+# Parse arguments (supports both named and positional)
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --source-dir) SOURCE_DIR="$2"; shift 2 ;;
+        --output-dir) OUTPUT_DIR="$2"; shift 2 ;;
+        --version) VERSION="$2"; shift 2 ;;
+        --codename) CODENAME="$2"; shift 2 ;;
+        *)
+            # Legacy positional arguments
+            if [[ -z "$SOURCE_DIR" || "$SOURCE_DIR" == "/source" ]]; then
+                SOURCE_DIR="$1"
+            elif [[ -z "$OUTPUT_DIR" || "$OUTPUT_DIR" == "/output" ]]; then
+                OUTPUT_DIR="$1"
+            fi
+            shift
+            ;;
+    esac
+done
+
+# Set OTB_VERSION for debian/rules
+if [ -n "$VERSION" ]; then
+    OTB_VERSION="$VERSION"
+fi
+
+# Detect architecture for library paths
+ARCH=$(uname -m)
+if [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then
+    LIBDIR="/usr/lib/aarch64-linux-gnu"
+else
+    LIBDIR="/usr/lib/x86_64-linux-gnu"
+fi
+log_info "Architecture: $ARCH, Library directory: $LIBDIR"
 
 # Check source directory
 check_source() {
@@ -70,7 +107,7 @@ install_dependencies() {
     # The system libpq lacks PQconnectdbParallel, PQresultCommandId, etc.
     apt-get remove -y libpq-dev 2>/dev/null || true
     # Remove the system libpq.so symlink but keep libpq.so.5 (runtime)
-    rm -f /usr/lib/x86_64-linux-gnu/libpq.so 2>/dev/null || true
+    rm -f "$LIBDIR/libpq.so" 2>/dev/null || true
 
     # Update shared library cache
     ldconfig
@@ -79,8 +116,8 @@ install_dependencies() {
     log_info "Setting up library symlinks for configure..."
     mkdir -p /usr/local/lib
 
-    for f in /usr/lib/x86_64-linux-gnu/libzstd.a /usr/lib/x86_64-linux-gnu/libzstd.so \
-             /usr/lib/x86_64-linux-gnu/liblz4.a /usr/lib/x86_64-linux-gnu/liblz4.so; do
+    for f in "$LIBDIR/libzstd.a" "$LIBDIR/libzstd.so" \
+             "$LIBDIR/liblz4.a" "$LIBDIR/liblz4.so"; do
         if [ -f "$f" ]; then
             ln -sf "$f" "/usr/local/lib/$(basename $f)"
         fi
@@ -94,21 +131,21 @@ install_dependencies() {
     apt-get install -y -qq libatomic1 2>/dev/null || true
 
     # Find and symlink libatomic.so
-    if [ ! -f /usr/lib/x86_64-linux-gnu/libatomic.so ]; then
+    if [ ! -f "$LIBDIR/libatomic.so" ]; then
         # Try 1: gcc -print-file-name
         gcc_path=$(gcc -print-file-name=libatomic.so 2>/dev/null)
         if [ -n "$gcc_path" ] && [ -f "$gcc_path" ]; then
-            ln -sf "$gcc_path" /usr/lib/x86_64-linux-gnu/libatomic.so
+            ln -sf "$gcc_path" "$LIBDIR/libatomic.so"
             log_info "Symlinked libatomic.so from gcc path: $gcc_path"
         # Try 2: Symlink from libatomic.so.1
-        elif [ -f /usr/lib/x86_64-linux-gnu/libatomic.so.1 ]; then
-            ln -sf /usr/lib/x86_64-linux-gnu/libatomic.so.1 /usr/lib/x86_64-linux-gnu/libatomic.so
+        elif [ -f "$LIBDIR/libatomic.so.1" ]; then
+            ln -sf "$LIBDIR/libatomic.so.1" "$LIBDIR/libatomic.so"
             log_info "Symlinked libatomic.so from libatomic.so.1"
         # Try 3: Find it anywhere
         else
             found=$(find /usr/lib -name "libatomic.so*" -type f 2>/dev/null | head -1)
             if [ -n "$found" ]; then
-                ln -sf "$found" /usr/lib/x86_64-linux-gnu/libatomic.so
+                ln -sf "$found" "$LIBDIR/libatomic.so"
                 log_info "Symlinked libatomic.so from: $found"
             else
                 log_warn "libatomic.so not found - 128-bit atomics may fail"
@@ -117,8 +154,8 @@ install_dependencies() {
     fi
 
     # Verify libatomic.so exists
-    if [ -f /usr/lib/x86_64-linux-gnu/libatomic.so ]; then
-        log_info "libatomic.so found at: $(readlink -f /usr/lib/x86_64-linux-gnu/libatomic.so)"
+    if [ -f "$LIBDIR/libatomic.so" ]; then
+        log_info "libatomic.so found at: $(readlink -f $LIBDIR/libatomic.so)"
     else
         log_warn "libatomic.so not found - 128-bit atomics patch will handle this"
     fi
@@ -157,6 +194,33 @@ build_packages() {
 
     cd "$SOURCE_DIR"
 
+    # Copy debian directory from packaging repo if not present
+    if [ ! -d "debian" ]; then
+        log_error "No debian directory found in source"
+        exit 1
+    fi
+
+    # Handle version substitution for non-5.0 builds
+    if [ -n "$OTB_VERSION" ] && [ "$OTB_VERSION" != "5.0" ]; then
+        log_info "Substituting version $OTB_VERSION in debian files..."
+
+        # Replace version in debian/rules
+        if [ -f "debian/rules" ]; then
+            sed -i "s/^OTB_VERSION := .*/OTB_VERSION := $OTB_VERSION/" debian/rules
+        fi
+
+        # Substitute version in debian files
+        files=$(find debian/ -type f \( -name '*.install' -o -name '*.dirs' \
+          -o -name '*.postinst' -o -name '*.prerm' -o -name '*.postrm' \
+          -o -name 'changelog' -o -name 'control' \))
+        # 1) versioned install paths: .../opentenbase/5.0/...
+        sed -i "s|opentenbase/5\.0/|opentenbase/${OTB_VERSION}/|g" $files
+        # 2) OTB_VERSION shell variable in maintainer scripts
+        sed -i "s|^OTB_VERSION=\"5\.0\"|OTB_VERSION=\"${OTB_VERSION}\"|" $files
+        # 3) changelog version header: opentenbase (5.0-1ubuntu1)
+        sed -i "s|^opentenbase (5\.0-|opentenbase (${OTB_VERSION}-|" $files
+    fi
+
     # Clean previous build
     fakeroot debian/rules clean || true
 
@@ -166,6 +230,19 @@ build_packages() {
     # Move to output directory
     mkdir -p "$OUTPUT_DIR"
     mv ../*.deb "$OUTPUT_DIR/"
+
+    # Rename packages with codename suffix if provided
+    if [ -n "$CODENAME" ]; then
+        cd "$OUTPUT_DIR"
+        for deb in *.deb; do
+            [ -f "$deb" ] || continue
+            newname=$(echo "$deb" | sed "s/_${OTB_VERSION:-5.0}-1ubuntu1_/_${OTB_VERSION:-5.0}-1ubuntu1~${CODENAME}_/")
+            if [ "$newname" != "$deb" ]; then
+                mv "$deb" "$newname"
+                log_info "Renamed: $deb -> $newname"
+            fi
+        done
+    fi
 }
 
 # Verify packages
