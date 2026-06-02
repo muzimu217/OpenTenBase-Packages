@@ -302,7 +302,9 @@ jobs:
           VERSION="${{ matrix.version }}"
           CODENAME="${{ matrix.codename }}"
 
-          mkdir -p ${{ github.workspace }}/debs
+          # Use absolute path that works on both host and container
+          OUTPUT_DIR="/tmp/otb-debs"
+          mkdir -p "$OUTPUT_DIR"
 
           # Copy debian directory and patches to source
           cp -r opentenbase-pkg/debian/ /tmp/source/OpenTenBase/debian/
@@ -325,18 +327,22 @@ jobs:
             --source-dir /tmp/source/OpenTenBase \
             --version "$VERSION" \
             --codename "$CODENAME" \
-            --output-dir ${{ github.workspace }}/debs
+            --output-dir "$OUTPUT_DIR"
+
+          # Copy to workspace for upload
+          mkdir -p debs
+          cp "$OUTPUT_DIR"/*.deb debs/
 
       - name: List built packages
         run: |
           echo "=== Built DEB packages ==="
-          ls -la ${{ github.workspace }}/debs/*.deb || echo "No packages found"
+          ls -la debs/*.deb || echo "No packages found"
 
       - name: Upload DEB packages
         uses: actions/upload-artifact@v4
         with:
           name: debs-${{ matrix.distro }}-${{ matrix.version }}-arm64
-          path: ${{ github.workspace }}/debs/*.deb
+          path: debs/*.deb
           retention-days: 30
 
       - name: Cleanup
