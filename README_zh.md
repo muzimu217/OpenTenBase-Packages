@@ -123,9 +123,9 @@ curl -sSL https://raw.githubusercontent.com/CDUESTC-OpenAtom-Open-Source-Club/Op
 | Rocky Linux | 8 / 9 | — | ✅ | ✅ | ✅ (仅 el9) | 已验证 |
 | AlmaLinux | 8 / 9 | — | ✅ | ✅ | ✅ (仅 el9) | 已验证 |
 | Fedora | 40 | — | ✅ | ✅ | — | 已验证 |
-| OpenEuler | 22.03 | — | ✅ | ✅ | — | 已验证 |
+| OpenEuler | 22.03 | — | ✅ | ✅ | ✅ | 已验证 |
 
-> **aarch64 说明**: RPM aarch64 包目前仅支持 el9（Rocky/Alma 9）。当 aarch64 仓库不存在时，安装脚本会自动回退到 x86_64 仓库。DEB aarch64 全面支持所有发行版。
+> **aarch64 说明**: RPM aarch64 包支持 el9（Rocky/Alma 9）和 openEuler 22.03。当 aarch64 仓库不存在时（el8、fedora），安装脚本会自动回退到 x86_64 仓库。DEB aarch64 全面支持所有发行版。
 
 ---
 
