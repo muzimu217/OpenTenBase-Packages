@@ -299,18 +299,18 @@ jobs:
 
       - name: Build DEB package
         run: |
-          cd ${{ github.workspace }}/opentenbase-pkg
           VERSION="${{ matrix.version }}"
           CODENAME="${{ matrix.codename }}"
 
           mkdir -p ${{ github.workspace }}/debs
 
           # Copy debian directory and patches to source
-          cp -r debian/ /tmp/source/OpenTenBase/debian/
+          # Use relative paths since we're in a container with different mount paths
+          cp -r opentenbase-pkg/debian/ /tmp/source/OpenTenBase/debian/
           mkdir -p /tmp/source/OpenTenBase/debian/patches
-          cp patches/*.patch /tmp/source/OpenTenBase/debian/patches/ 2>/dev/null || true
+          cp opentenbase-pkg/patches/*.patch /tmp/source/OpenTenBase/debian/patches/ 2>/dev/null || true
 
-          bash scripts/build-deb.sh \
+          bash opentenbase-pkg/scripts/build-deb.sh \
             --source-dir /tmp/source/OpenTenBase \
             --version "$VERSION" \
             --codename "$CODENAME" \
