@@ -1,0 +1,35 @@
+# OpenTenBase 低内存配置模板 (适用于 1-2GB RAM 服务器)
+# 仅用于 Datanode，不建议用于 GTM 或 Coordinator
+
+# 连接数极简
+max_connections = 20
+superuser_reserved_connections = 3
+
+# 共享内存极简（必须物理内存，不可 swap）
+shared_buffers = 16MB
+dynamic_shared_memory_type = posix
+
+# 连接池极简
+max_pool_size = 20
+pooler_communication_port = 6668
+
+# 工作内存极简
+work_mem = 4MB
+maintenance_work_mem = 64MB
+autovacuum_work_mem = 16MB
+
+# WAL 极简
+wal_buffers = 4MB
+
+# 绑定内存
+effective_cache_size = 256MB
+
+# 后台写入频率提高（减少内存压力）
+bgwriter_delay = 200ms
+bgwriter_lru_maxpages = 100
+
+# 日志简化
+logging_collector = on
+log_directory = '/var/log/opentenbase/5.0'
+log_filename = 'dn1.log'
+log_min_duration_statement = 1000
