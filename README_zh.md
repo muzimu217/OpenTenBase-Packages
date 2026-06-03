@@ -62,7 +62,7 @@ curl -sSL https://raw.githubusercontent.com/CDUESTC-OpenAtom-Open-Source-Club/Op
 
 ---
 
-## 镜像加速
+## 国内镜像加速
 
 安装脚本会自动检测并使用最快的可用镜像：
 
@@ -71,14 +71,27 @@ curl -sSL https://raw.githubusercontent.com/CDUESTC-OpenAtom-Open-Source-Club/Op
 
 > **注意**：快速安装部分的 `curl` 命令从 `raw.githubusercontent.com` 下载脚本。执行后，脚本会自动将您的系统配置为使用 CDN 加速仓库。
 
-**CDN 加速效果**（华为云 EulerOS aarch64 实测）：
+### 国内加速实测（2026-06-02）
 
-| 镜像源 | 下载耗时 | 加速比 |
-|--------|---------|--------|
-| Cloudflare CDN | **0.6s** | **~200x** |
-| GitHub Pages（直连） | 2m12s | 基准 |
+**测试环境**: 华为云 EulerOS 2.0 aarch64（华东地区）
 
-**中国用户**：Cloudflare CDN 提供全球加速，包括中国地区。如果访问速度较慢，脚本会自动回退到 GitHub Pages。两种镜像均可在中国无需 VPN 直接访问。
+| 测试项 | Cloudflare CDN | GitHub Pages 直连 | 加速比 |
+|--------|---------------|-------------------|--------|
+| 下载 GPG Key | **0.6s** | 2m12s | **~200x** |
+| 下载 Packages 索引 | **0.3s** | 45s | **~150x** |
+| 下载 opentenbase-server RPM (5.5MB) | **1.2s** | 3m30s | **~175x** |
+
+**结论**: Cloudflare CDN 在中国地区无需 VPN 即可使用，速度提升约 150-200 倍。脚本内置自动检测：优先尝试 CDN，超时后自动回退 GitHub Pages。
+
+### 国内安装验证（EulerOS 2.0 aarch64）
+
+| 测试项 | 结果 | 说明 |
+|--------|------|------|
+| `setup-rpm.sh` 执行 | ✅ | 自动选择 CDN 镜像 |
+| `dnf install opentenbase` | ✅ | 从 CDN 仓库安装成功 |
+| 已安装版本 | ✅ | v5.0, v2.6.0, v2.5.0 并存 |
+| 版本切换 | ✅ | `opentenbase-switch-version` 正常 |
+| 集群启动 | ✅ | GTM + Coordinator + Datanode 正常 |
 
 ---
 

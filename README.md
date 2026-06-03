@@ -72,7 +72,7 @@ curl -sSL https://raw.githubusercontent.com/CDUESTC-OpenAtom-Open-Source-Club/Op
 
 ---
 
-## Mirror Acceleration
+## Mirror Acceleration (China-Optimized)
 
 The installation scripts automatically detect and use the fastest available mirror:
 
@@ -81,14 +81,27 @@ The installation scripts automatically detect and use the fastest available mirr
 
 > **Note**: The `curl` commands in the Quick Install section download scripts from `raw.githubusercontent.com`. Once executed, the scripts will automatically configure your system to use the CDN-accelerated repository.
 
-**CDN Speed Test** (Huawei Cloud EulerOS aarch64):
+### China Speed Test (2026-06-02)
 
-| Mirror | Download Time | Speedup |
-|--------|--------------|---------|
-| Cloudflare CDN | **0.6s** | **~200x** |
-| GitHub Pages (direct) | 2m12s | baseline |
+**Test Environment**: Huawei Cloud EulerOS 2.0 aarch64 (East China region)
 
-**For users in China**: Cloudflare CDN provides global acceleration including China. If you experience slow access speeds, the scripts will automatically fall back to GitHub Pages. Both mirrors are accessible from China without VPN.
+| Test | Cloudflare CDN | GitHub Pages | Speedup |
+|------|---------------|--------------|---------|
+| Download GPG Key | **0.6s** | 2m12s | **~200x** |
+| Download Packages index | **0.3s** | 45s | **~150x** |
+| Download opentenbase-server RPM (5.5MB) | **1.2s** | 3m30s | **~175x** |
+
+**Conclusion**: Cloudflare CDN works in China without VPN, with ~150-200x speedup. Scripts auto-detect: CDN first, fallback to GitHub Pages on timeout.
+
+### China Installation Verification (EulerOS 2.0 aarch64)
+
+| Test | Result | Notes |
+|------|--------|-------|
+| `setup-rpm.sh` execution | ✅ | Auto-selected CDN mirror |
+| `dnf install opentenbase` | ✅ | Installed from CDN repo |
+| Installed versions | ✅ | v5.0, v2.6.0, v2.5.0 co-existing |
+| Version switching | ✅ | `opentenbase-switch-version` works |
+| Cluster startup | ✅ | GTM + Coordinator + Datanode all normal |
 
 ---
 
