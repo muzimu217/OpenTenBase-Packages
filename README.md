@@ -1,4 +1,4 @@
-# OpenTenBase Packages
+# OpenTenBase Packages(此仓库已经转移到社团仓库进行统一维护管理，目前这里的版本没有更新，相关链接可能错误)
 
 [![GitHub Stars](https://img.shields.io/github/stars/CDUESTC-OpenAtom-Open-Source-Club/OpenTenBase-Packages?style=flat-square&logo=github&cacheSeconds=1800)](https://github.com/CDUESTC-OpenAtom-Open-Source-Club/OpenTenBase-Packages/stargazers)
 [![GitHub Downloads](https://img.shields.io/github/downloads/CDUESTC-OpenAtom-Open-Source-Club/OpenTenBase-Packages/total?style=flat-square&logo=github&cacheSeconds=1800)](https://github.com/CDUESTC-OpenAtom-Open-Source-Club/OpenTenBase-Packages/releases)
